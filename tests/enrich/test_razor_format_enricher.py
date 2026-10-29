@@ -42,8 +42,8 @@ class TestRazorFormatEnricherAppliesTo:
         record = {"razor": {"original": "Gillette Tech"}}
         assert enricher.applies_to(record) is False
 
-    def test_applies_to_stores_record(self, enricher):
-        """Test that applies_to stores the record for enrich() to access."""
+    def test_applies_to_does_not_store_record(self, enricher):
+        """applies_to() must not keep record state; enrich() reads its record parameter."""
         record = {
             "razor": {
                 "matched": {
@@ -57,7 +57,34 @@ class TestRazorFormatEnricherAppliesTo:
             },
         }
         enricher.applies_to(record)
-        assert enricher._current_record == record
+        assert not hasattr(enricher, "_current_record")
+
+    def test_enrich_uses_record_parameter_not_stale_state(self, enricher):
+        """Regression: enrich() must read blade format from its record parameter.
+
+        A prior applies_to() call for a different record must not influence
+        enrich(). Previously enrich() read blade format from a record stored
+        by applies_to(), so enriching an AC-blade record after checking a
+        DE-blade record wrongly produced format "DE".
+        """
+        de_record = {
+            "razor": {"matched": {"brand": "Generic", "model": "Razor", "format": ""}},
+            "blade": {"matched": {"format": "DE"}},
+        }
+        ac_record = {
+            "razor": {"matched": {"brand": "Generic", "model": "Razor", "format": ""}},
+            "blade": {"matched": {"format": "AC"}},
+        }
+        assert enricher.applies_to(de_record) is True
+        result = enricher.enrich(ac_record["razor"], "", ac_record)
+        assert result["format"] == "AC"
+        assert result["_extraction_source"] == "blade_format"
+
+    def test_enrich_with_no_record_falls_back_to_default(self, enricher):
+        """enrich() with record=None has no blade format to read and falls back."""
+        result = enricher.enrich({"matched": {"brand": "Generic", "format": ""}}, "", None)
+        assert result["format"] == "DE"
+        assert result["_extraction_source"] == "default"
 
 
 class TestRazorFormatEnricherCartridgeDisposable:
@@ -79,7 +106,7 @@ class TestRazorFormatEnricherCartridgeDisposable:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Cartridge/Disposable"
@@ -106,7 +133,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (AC)"
@@ -128,7 +155,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (Half DE)"
@@ -150,7 +177,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (GEM)"
@@ -172,7 +199,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (Injector)"
@@ -189,7 +216,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (Unspecified)"
@@ -206,7 +233,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (Unspecified)"
@@ -228,7 +255,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (Unspecified)"
@@ -250,7 +277,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (AC)"
@@ -272,7 +299,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (DE)"
@@ -294,7 +321,7 @@ class TestRazorFormatEnricherShavette:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Shavette (AC)"
@@ -319,7 +346,7 @@ class TestRazorFormatEnricherHalfDE:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Half DE"
@@ -345,7 +372,7 @@ class TestRazorFormatEnricherFallback:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "DE"
@@ -367,7 +394,7 @@ class TestRazorFormatEnricherFallback:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "GEM"
@@ -389,7 +416,7 @@ class TestRazorFormatEnricherFallback:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "Straight"
@@ -411,7 +438,7 @@ class TestRazorFormatEnricherFallback:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "DE"
@@ -433,7 +460,7 @@ class TestRazorFormatEnricherFallback:
         }
         enricher.applies_to(record)
         field_data = record["razor"]
-        result = enricher.enrich(field_data, "")
+        result = enricher.enrich(field_data, "", record)
 
         assert result is not None
         assert result["format"] == "DE"

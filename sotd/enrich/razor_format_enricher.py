@@ -11,10 +11,6 @@ class RazorFormatEnricher(BaseEnricher):
     Handles all format cases: Shavette, Half DE, Cartridge/Disposable, and fallback logic.
     """
 
-    def __init__(self):
-        """Initialize the enricher with instance state for cross-field access."""
-        self._current_record: Optional[Dict[str, Any]] = None
-
     @property
     def target_field(self) -> str:
         """Target razor field for enrichment."""
@@ -24,7 +20,6 @@ class RazorFormatEnricher(BaseEnricher):
         """Determine if this enricher applies to the given record.
 
         Applies to all records that have a matched razor product.
-        Stores the record for access to blade data in enrich() method.
 
         Args:
             record: A comment record with matched product data
@@ -44,8 +39,6 @@ class RazorFormatEnricher(BaseEnricher):
         if not razor_matched:
             return False
 
-        # Store record for access to blade data in enrich() method
-        self._current_record = record
         return True
 
     def enrich(
@@ -59,6 +52,9 @@ class RazorFormatEnricher(BaseEnricher):
         Args:
             field_data: The matched razor data from the match phase
             original_comment: The original user comment text (unused for format determination)
+            record: The full comment record. Blade data is read from this record's
+                "blade" field (not from shared state), so enrich() is stateless
+                across records.
 
         Returns:
             Dictionary with format field in enriched section, or None if no format determined.
@@ -68,10 +64,10 @@ class RazorFormatEnricher(BaseEnricher):
         razor_matched = field_data.get("matched", {})
         razor_format = razor_matched.get("format", "").strip() if razor_matched else ""
 
-        # Get blade format from stored record
+        # Get blade format from the record passed to this call, not shared state.
         blade_format = ""
-        if self._current_record:
-            blade_data = self._current_record.get("blade", {})
+        if record:
+            blade_data = record.get("blade", {})
             if isinstance(blade_data, dict):
                 blade_matched = blade_data.get("matched", {})
                 if blade_matched:
