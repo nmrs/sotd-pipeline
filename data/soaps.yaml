@@ -8638,6 +8638,9 @@ Tallow + Steel:
       patterns:
       - tallow.*steel.*shag
       wsdb_slug: tallow-steel-shag-soap
+    Vide Poche:
+      patterns:
+      - tallow.*steel.*vid[ea] poche
 Tatara:
   patterns:
   - tatara
