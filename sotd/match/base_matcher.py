@@ -1,4 +1,6 @@
 import re
+
+import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -67,9 +69,13 @@ class BaseMatcher:
                     field_file, loader_cls=UniqueKeyLoader
                 )
             return _catalog_cache[cache_key]
-        except Exception:
-            # If correct matches file is corrupted or can't be loaded, continue without it
-            return {}
+        except (yaml.YAMLError, OSError, UnicodeDecodeError) as e:
+            # A missing correct_matches file is fine (returns {} above). Any
+            # OTHER load failure must surface loudly: silently falling back
+            # to regex-only matching would corrupt the whole run.
+            raise ValueError(
+                f"Failed to load correct matches file {field_file}: {e}"
+            ) from e
 
     def _get_normalized_text(self, value: str) -> str:
         """
