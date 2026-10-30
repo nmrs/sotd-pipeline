@@ -57,6 +57,7 @@ Above the Tie:
     patterns:
       - (?:\batt\b|tie).*se[- ]?1
       - (?:atlas|bamboo|calypso|colossus|kronos).*se1
+      - (?:\batt\b|tie).*se[- ]?[12].*(?:atlas|bamboo|calypso|colossus|kronos)
   SE2:
     format: AC
     patterns:
