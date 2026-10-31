@@ -671,6 +671,13 @@ class AnnualAggregationEngine:
                     # Skip corrupted files
                     continue
 
+        # Deduplicate by comment ID: recovered/re-fetched month files can
+        # repeat the same comment records, which would skew the per-user
+        # math calculated from these records.
+        from .load import dedupe_records_by_id
+
+        all_enriched_records = dedupe_records_by_id(all_enriched_records)
+
         # Cache the loaded records
         self._cached_enriched_records = all_enriched_records
         return all_enriched_records
