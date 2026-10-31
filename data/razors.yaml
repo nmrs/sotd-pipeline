@@ -529,6 +529,11 @@ Classic:
     format: AC
     patterns:
       - (?:classic.*)?king.*cobra
+Clauss:
+  Straight:
+    format: Straight
+    patterns:
+      - clauss.*(straight|\d{1,2}/(8|16)|hollow|ground)
 Clix:
   E-Z Flo:
     patterns:
