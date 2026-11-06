@@ -977,3 +977,119 @@ class TestProcessAnnualRange:
 
         # Should not raise exception
         process_annual_range([], data_dir, debug=True, force=True)
+
+
+class TestAnnualSpecializedRankTieBreak:
+    """Annual specialized tables must rank ties the way monthly does.
+
+    Monthly BaseAggregator._sort_and_rank ranks on (shaves, unique_users);
+    the annual specialized helpers ranked on shaves only, so two products
+    tied on shaves but differing on users shared an annual rank while
+    holding distinct monthly ranks.
+    """
+
+    @patch.object(AnnualAggregationEngine, "_load_enriched_records")
+    def test_specialized_category_tie_broken_by_unique_users(self, mock_load_enriched):
+        """Equal shaves, different users -> distinct annual ranks, like monthly."""
+        engine = AnnualAggregationEngine("2024", Path("/data"))
+        monthly_data = {
+            "2024-01": {
+                "data": {
+                    "razor_manufacturers": [
+                        {"brand": "BrandA", "shaves": 10, "unique_users": 5, "rank": 1},
+                        {"brand": "BrandB", "shaves": 10, "unique_users": 2, "rank": 2},
+                    ]
+                }
+            }
+        }
+        enriched = create_enriched_records_for_razors(
+            [
+                {"name": "BrandA Model", "shaves": 10, "unique_users": 5},
+                {"name": "BrandB Model", "shaves": 10, "unique_users": 2},
+            ]
+        )
+        mock_load_enriched.return_value = enriched
+
+        result = engine._aggregate_specialized_category(
+            monthly_data, "razor_manufacturers", "brand"
+        )
+        ranks = {row["name"]: row["rank"] for row in result}
+        assert ranks == {"BrandA": 1, "BrandB": 2}
+
+        # Cross-check: the monthly aggregator on the same records agrees.
+        from sotd.aggregate.aggregators.manufacturers.razor_manufacturer_aggregator import (
+            RazorManufacturerAggregator,
+        )
+
+        monthly = RazorManufacturerAggregator().aggregate(enriched)
+        monthly_ranks = {row["brand"]: row["rank"] for row in monthly}
+        assert ranks == monthly_ranks
+
+    @patch.object(AnnualAggregationEngine, "_load_enriched_records")
+    def test_specialized_brush_category_tie_broken_by_unique_users(self, mock_load_enriched):
+        """Equal shaves, different users -> distinct ranks in brush tables too."""
+        engine = AnnualAggregationEngine("2024", Path("/data"))
+        monthly_data = {
+            "2024-01": {
+                "data": {
+                    "brush_fibers": [
+                        {"fiber": "Badger", "shaves": 10, "unique_users": 5, "rank": 1},
+                        {"fiber": "Synthetic", "shaves": 10, "unique_users": 2, "rank": 2},
+                    ]
+                }
+            }
+        }
+        enriched = []
+        for fiber, users, shaves in [("Badger", 5, 10), ("Synthetic", 2, 10)]:
+            for user_idx in range(users):
+                per_user = shaves // users + (1 if user_idx < shaves % users else 0)
+                for _ in range(per_user):
+                    enriched.append(
+                        {
+                            "author": f"user_{fiber}_{user_idx}",
+                            "brush": {"matched": {"knot": {"fiber": fiber}}},
+                        }
+                    )
+        mock_load_enriched.return_value = enriched
+
+        result = engine._aggregate_specialized_brush_category(monthly_data, "brush_fibers")
+        ranks = {row["name"]: row["rank"] for row in result}
+        assert ranks == {"Badger": 1, "Synthetic": 2}
+
+        # Cross-check: the monthly aggregator on the same records agrees.
+        from sotd.aggregate.aggregators.brush_specialized.fiber_aggregator import (
+            FiberAggregator,
+        )
+
+        monthly = FiberAggregator().aggregate(enriched)
+        monthly_ranks = {row["fiber"]: row["rank"] for row in monthly}
+        assert ranks == monthly_ranks
+
+    @patch.object(AnnualAggregationEngine, "_load_enriched_records")
+    def test_specialized_category_full_tie_shares_rank(self, mock_load_enriched):
+        """Equal shaves AND equal users still share a rank (competition ranking)."""
+        engine = AnnualAggregationEngine("2024", Path("/data"))
+        monthly_data = {
+            "2024-01": {
+                "data": {
+                    "razor_manufacturers": [
+                        {"brand": "BrandA", "shaves": 10, "unique_users": 5, "rank": 1},
+                        {"brand": "BrandB", "shaves": 10, "unique_users": 5, "rank": 1},
+                        {"brand": "BrandC", "shaves": 8, "unique_users": 3, "rank": 3},
+                    ]
+                }
+            }
+        }
+        mock_load_enriched.return_value = create_enriched_records_for_razors(
+            [
+                {"name": "BrandA Model", "shaves": 10, "unique_users": 5},
+                {"name": "BrandB Model", "shaves": 10, "unique_users": 5},
+                {"name": "BrandC Model", "shaves": 8, "unique_users": 3},
+            ]
+        )
+
+        result = engine._aggregate_specialized_category(
+            monthly_data, "razor_manufacturers", "brand"
+        )
+        ranks = {row["name"]: row["rank"] for row in result}
+        assert ranks == {"BrandA": 1, "BrandB": 1, "BrandC": 3}

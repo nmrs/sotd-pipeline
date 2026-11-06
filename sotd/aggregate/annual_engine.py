@@ -476,8 +476,14 @@ class AnnualAggregationEngine:
         # Sort by shaves desc, then by unique_users desc
         grouped = grouped.sort_values(["shaves", "unique_users"], ascending=[False, False])
 
-        # Add rank column using competition ranking
-        grouped["rank"] = grouped["shaves"].rank(method="min", ascending=False).astype(int)
+        # Rank on (shaves, unique_users), matching monthly _sort_and_rank:
+        # a shaves tie is broken by unique_users; only a full tie shares a rank.
+        grouped = grouped.reset_index(drop=True)
+        grouped["temp_rank"] = range(1, len(grouped) + 1)
+        grouped["rank"] = grouped.groupby(["shaves", "unique_users"], sort=False)[
+            "temp_rank"
+        ].transform("min")
+        grouped = grouped.drop("temp_rank", axis=1)
 
         # Calculate avg_shaves_per_user using accurate unique_users
         grouped["avg_shaves_per_user"] = (
@@ -590,8 +596,14 @@ class AnnualAggregationEngine:
         # Sort by shaves desc, then by unique_users desc
         grouped = grouped.sort_values(["shaves", "unique_users"], ascending=[False, False])
 
-        # Add rank column (1-based, with ties getting the same rank)
-        grouped["rank"] = grouped["shaves"].rank(method="min", ascending=False).astype(int)
+        # Rank on (shaves, unique_users), matching monthly _sort_and_rank:
+        # a shaves tie is broken by unique_users; only a full tie shares a rank.
+        grouped = grouped.reset_index(drop=True)
+        grouped["temp_rank"] = range(1, len(grouped) + 1)
+        grouped["rank"] = grouped.groupby(["shaves", "unique_users"], sort=False)[
+            "temp_rank"
+        ].transform("min")
+        grouped = grouped.drop("temp_rank", axis=1)
 
         # Calculate avg_shaves_per_user using accurate unique_users
         grouped["avg_shaves_per_user"] = (
