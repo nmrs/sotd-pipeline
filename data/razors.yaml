@@ -3247,6 +3247,8 @@ Wester Bros:
     format: Straight
     patterns:
     - wester bros
+    - wester.*bro.*(straight|\d{1,2}/(8|16)|hollow|ground)
+    - \d{1,2}/(8|16).*wester.*bro
 W.H. Morley & Sons:
   Straight:
     format: Straight
