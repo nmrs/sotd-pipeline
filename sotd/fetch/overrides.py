@@ -1,6 +1,7 @@
 """Manual include / exclude overrides for SOTD thread discovery.
 
-YAML file ``data/thread_overrides.yaml`` schema:
+YAML file ``thread_overrides.yaml`` in the run's data directory (see
+``get_default_override_path``) with schema:
 
 ```yaml
 include:
@@ -20,11 +21,34 @@ from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, TypeVar
 from urllib.parse import urlparse
 
+from sotd.utils.data_dir import get_data_dir
 from sotd.utils.yaml_loader import load_yaml_with_nfc
 
 logger = logging.getLogger(__name__)
 
-OVERRIDE_PATH = Path("data/thread_overrides.yaml")
+
+def _repo_root() -> Path:
+    """Repo root, anchored at this file (``sotd/fetch/overrides.py``)."""
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def get_default_override_path() -> Path:
+    """Default thread-overrides path: ``<data dir>/thread_overrides.yaml``.
+
+    The data dir is the run's data dir (``get_data_dir()``: ``--data-dir`` >
+    ``SOTD_DATA_DIR`` env var > ``"data"``). A relative data dir is anchored
+    at the repo root so the path does not depend on the process working
+    directory — previously this was a bare CWD-relative
+    ``Path("data/thread_overrides.yaml")``, so running fetch from any
+    directory but the repo root silently dropped every include and exclude.
+    """
+    data_dir = get_data_dir()
+    if not data_dir.is_absolute():
+        data_dir = _repo_root() / data_dir
+    return data_dir / "thread_overrides.yaml"
+
+
+OVERRIDE_PATH = get_default_override_path()
 
 _DATE_KEY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -89,8 +113,19 @@ def iter_month_urls(section: Mapping[Any, Any] | None, month: str) -> list[tuple
 
 
 def load_thread_overrides_data(path: Path = OVERRIDE_PATH) -> dict[Any, Any]:
-    """Load the overrides YAML file. Returns {} if missing or empty."""
+    """Load the overrides YAML file. Returns {} if missing or empty.
+
+    A missing file is warned about (with the resolved path) instead of
+    silently returning {}: the file is operator-authored match input, and a
+    run that proceeds without it fetches without the manual includes and
+    without dropping the excluded junk threads.
+    """
     if not path.is_file():
+        logger.warning(
+            "Thread overrides file not found: %s — proceeding without "
+            "include/exclude overrides",
+            path,
+        )
         return {}
     try:
         data = load_yaml_with_nfc(path)

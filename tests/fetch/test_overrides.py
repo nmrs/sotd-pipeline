@@ -123,3 +123,132 @@ exclude:
     assert urls == ["https://www.reddit.com/r/Wetshaving/comments/includeid/inc/"]
     assert "legacyid" not in "".join(urls)
     assert "excludeid" not in "".join(urls)
+
+
+def _restore_overrides_module(monkeypatch, original_env, original_path):
+    """Reload sotd.fetch.overrides with the ambient env restored.
+
+    Tests that reload the module (to re-evaluate the import-time default
+    path under a patched SOTD_DATA_DIR) must leave the module exactly as
+    imported: same OVERRIDE_PATH the test process started with.
+    """
+    import importlib
+
+    import sotd.fetch.overrides as overrides_mod
+
+    if original_env is None:
+        monkeypatch.delenv("SOTD_DATA_DIR", raising=False)
+    else:
+        monkeypatch.setenv("SOTD_DATA_DIR", original_env)
+    importlib.reload(overrides_mod)
+    assert overrides_mod.OVERRIDE_PATH == original_path
+
+
+def test_default_override_path_uses_configured_data_dir(tmp_path: Path, monkeypatch) -> None:
+    """#23 instance 1: default path follows SOTD_DATA_DIR, any CWD.
+
+    Regression: OVERRIDE_PATH was a bare CWD-relative
+    Path("data/thread_overrides.yaml"), so fetch run from any directory but
+    the repo root — and with SOTD_DATA_DIR set — silently loaded no
+    overrides at all.
+    """
+    import importlib
+    import os
+
+    import sotd.fetch.overrides as overrides_mod
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "thread_overrides.yaml").write_text("""
+include:
+  2025-06-25:
+    - https://www.reddit.com/r/Wetshaving/comments/includeid/inc/
+exclude:
+  2026-06-01:
+    - https://www.reddit.com/r/Wetshaving/comments/1ttrafo/monday_lather_games/
+""")
+    other_cwd = tmp_path / "elsewhere"
+    other_cwd.mkdir()
+
+    original_env = os.environ.get("SOTD_DATA_DIR")
+    original_path = overrides_mod.OVERRIDE_PATH
+    monkeypatch.setenv("SOTD_DATA_DIR", str(data_dir))
+    monkeypatch.chdir(other_cwd)
+    importlib.reload(overrides_mod)
+    try:
+        assert overrides_mod.OVERRIDE_PATH == data_dir / "thread_overrides.yaml"
+        assert overrides_mod.OVERRIDE_PATH.is_absolute()
+        # Default-path loads read the configured data dir, not ./data.
+        assert overrides_mod.load_thread_exclude_ids("2026-06") == {"1ttrafo"}
+        assert overrides_mod.load_thread_exclude_ids("2026-07") == set()
+        data = overrides_mod.load_thread_overrides_data()
+        assert overrides_mod.iter_month_urls(data.get("include"), "2025-06") == [
+            ("2025-06-25", "https://www.reddit.com/r/Wetshaving/comments/includeid/inc/")
+        ]
+        # The PRAW loader re-imports OVERRIDE_PATH on each call, so it picks
+        # the reloaded path up too.
+        from sotd.fetch.reddit import load_thread_overrides
+
+        assert load_thread_overrides("2025-06") == [
+            "https://www.reddit.com/r/Wetshaving/comments/includeid/inc/"
+        ]
+    finally:
+        _restore_overrides_module(monkeypatch, original_env, original_path)
+
+
+def test_default_override_path_anchored_at_repo_root(tmp_path: Path, monkeypatch) -> None:
+    """#23 instance 1: with no SOTD_DATA_DIR the default is repo data/, any CWD."""
+    import importlib
+    import os
+
+    import sotd.fetch.overrides as overrides_mod
+
+    other_cwd = tmp_path / "elsewhere"
+    other_cwd.mkdir()
+
+    original_env = os.environ.get("SOTD_DATA_DIR")
+    original_path = overrides_mod.OVERRIDE_PATH
+    monkeypatch.delenv("SOTD_DATA_DIR", raising=False)
+    monkeypatch.chdir(other_cwd)
+    importlib.reload(overrides_mod)
+    try:
+        repo_root = Path(overrides_mod.__file__).resolve().parent.parent.parent
+        assert overrides_mod.OVERRIDE_PATH == repo_root / "data" / "thread_overrides.yaml"
+        assert overrides_mod.OVERRIDE_PATH.is_absolute()
+    finally:
+        _restore_overrides_module(monkeypatch, original_env, original_path)
+
+
+def test_load_thread_overrides_data_missing_file_warns(tmp_path: Path, caplog) -> None:
+    """#23 instance 1: a missing overrides file warns loudly, naming the path."""
+    missing = tmp_path / "missing.yaml"
+    with caplog.at_level("WARNING", logger="sotd.fetch.overrides"):
+        assert load_thread_overrides_data(missing) == {}
+    assert "not found" in caplog.text
+    assert str(missing) in caplog.text
+
+
+def test_default_override_path_missing_file_warns(tmp_path: Path, monkeypatch, caplog) -> None:
+    """#23 instance 1: the default path warns when the configured file is absent."""
+    import importlib
+    import os
+
+    import sotd.fetch.overrides as overrides_mod
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    other_cwd = tmp_path / "elsewhere"
+    other_cwd.mkdir()
+
+    original_env = os.environ.get("SOTD_DATA_DIR")
+    original_path = overrides_mod.OVERRIDE_PATH
+    monkeypatch.setenv("SOTD_DATA_DIR", str(data_dir))
+    monkeypatch.chdir(other_cwd)
+    importlib.reload(overrides_mod)
+    try:
+        with caplog.at_level("WARNING", logger="sotd.fetch.overrides"):
+            assert overrides_mod.load_thread_exclude_ids("2026-06") == set()
+        assert "not found" in caplog.text
+        assert str(data_dir / "thread_overrides.yaml") in caplog.text
+    finally:
+        _restore_overrides_module(monkeypatch, original_env, original_path)
