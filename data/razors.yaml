@@ -1537,7 +1537,7 @@ Joseph Elliot:
   Straight:
     format: Straight
     patterns:
-      - joseph.*el+iot(?:.*\d{1,2}/(8|16))?
+      - (?:joseph|jos\.?|jo\.).*el+iot
 Joseph Rodgers & Sons:
   The Royal Razor:
     format: Straight
