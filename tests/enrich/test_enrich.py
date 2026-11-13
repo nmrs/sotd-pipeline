@@ -17,6 +17,119 @@ def test_setup_enrichers():
     # This should not raise any exceptions
 
 
+def _brush_enricher():
+    """Return the registered BrushEnricher (setup_enrichers must have run)."""
+    from sotd.enrich.brush_enricher import BrushEnricher
+    from sotd.enrich.registry import enricher_registry
+
+    for enricher in enricher_registry.get_all_enrichers():
+        if isinstance(enricher, BrushEnricher):
+            return enricher
+    raise AssertionError("BrushEnricher not registered")
+
+
+def _handles_yaml(brand="ReproBrand", model="ReproModel", knot_size_mm=26):
+    return (
+        "artisan_handles:\n"
+        f"  {brand}:\n"
+        f"    {model}:\n"
+        "      patterns:\n"
+        "        - 'repro.*handle'\n"
+        f"      knot_size_mm: {knot_size_mm}\n"
+    )
+
+
+def _matched_brush_record():
+    """Composite brush record with no knot size anywhere but the handle defaults."""
+    return {
+        "id": "c1",
+        "brush": {
+            "original": "ReproBrand ReproModel with ReproKnot",
+            "normalized": "ReproBrand ReproModel with ReproKnot",
+            "matched": {
+                "handle": {
+                    "brand": "ReproBrand",
+                    "model": "ReproModel",
+                    "source_text": "ReproBrand ReproModel",
+                },
+                "knot": {
+                    "brand": "ReproKnot",
+                    "model": "ReproKnotModel",
+                    "source_text": "ReproKnot",
+                },
+            },
+        },
+        "brush_extracted": "ReproBrand ReproModel with ReproKnot",
+    }
+
+
+def test_setup_enrichers_data_path_repoints_brush_catalog_loader(tmp_path):
+    """setup_enrichers(data_path=...) must point the BrushEnricher's
+    CatalogLoader at that dir (not CWD-relative Path("data")).
+
+    Regression test for #23 instance 2: setup_enrichers() hardcoded
+    data_path=None, so from any CWD but the repo root the loader silently
+    found no handles.yaml/knots.yaml and brush inference degraded to empty.
+    """
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "handles.yaml").write_text(_handles_yaml())
+    (data_dir / "knots.yaml").write_text(
+        "known_knots:\n  ReproKnot:\n    ReproKnotModel:\n      patterns:\n        - 'repro.*knot'\n"
+    )
+
+    setup_enrichers(data_path=data_dir)
+    try:
+        brush = _brush_enricher()
+        assert brush.catalog_loader.data_path == data_dir
+        assert brush.catalog_loader.load_handle_patterns(
+            "ReproBrand", "ReproModel"
+        ) == ["repro.*handle"]
+        assert brush.catalog_loader.load_handle_maker_defaults(
+            "ReproBrand", "ReproModel"
+        ) == {"knot_size_mm": 26}
+    finally:
+        # Restore the shared loader to the repo default so later tests in
+        # this process see the real catalogs again.
+        _brush_enricher().catalog_loader.set_data_path(Path("data"))
+
+
+def test_process_month_uses_data_dir_for_brush_catalogs(tmp_path, monkeypatch):
+    """_process_month must enrich from the run's data dir even when the
+    process CWD has no data/ directory.
+
+    End-to-end regression test for #23 instance 2: with handles.yaml in the
+    run's data dir only, the handle-maker knot-size inference must fire.
+    On unmodified code the loader read CWD-relative ./data, found nothing,
+    and the record enriched with knot_size_mm absent.
+    """
+    base_path = tmp_path / "data"
+    work_dir = tmp_path / "work"
+    (base_path / "matched").mkdir(parents=True)
+    work_dir.mkdir()
+    (base_path / "handles.yaml").write_text(_handles_yaml())
+    (base_path / "knots.yaml").write_text(
+        "known_knots:\n  ReproKnot:\n    ReproKnotModel:\n      patterns:\n        - 'repro.*knot'\n"
+    )
+    (base_path / "matched" / "2025-01.json").write_text(
+        json.dumps({"meta": {"month": "2025-01"}, "data": [_matched_brush_record()]})
+    )
+
+    monkeypatch.chdir(work_dir)
+    assert not (work_dir / "data").exists()
+
+    try:
+        result = _process_month(2025, 1, base_path, debug=False, force=True)
+        assert result["status"] == "completed"
+        out = json.loads((base_path / "enriched" / "2025-01.json").read_text())
+        enriched = out["data"][0]["brush"]["enriched"]
+        assert enriched["knot_size_mm"] == 26
+        assert enriched["_extraction_source"] == "handle_maker_default"
+        assert enriched["_handle_maker_inference"] == "ReproBrand"
+    finally:
+        _brush_enricher().catalog_loader.set_data_path(Path("data"))
+
+
 def test_enrich_comments_basic():
     """Test basic enrichment functionality."""
     comments = [
