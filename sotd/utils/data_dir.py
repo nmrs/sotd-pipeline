@@ -59,22 +59,22 @@ def get_data_dir(cli_arg: Optional[Path | str] = None) -> Path:
         Path: Resolved data directory path
 
     Examples:
-        >>> get_data_dir(Path("/custom/path"))
-        Path('/custom/path')
+        >>> get_data_dir(Path("/custom/path")) == Path("/custom/path")
+        True
 
         >>> os.environ['SOTD_DATA_DIR'] = '/data'
-        >>> get_data_dir(None)
-        Path('/data')
-        >>> get_data_dir(Path("data"))
-        Path('/data')
+        >>> get_data_dir(None) == Path('/data')
+        True
+        >>> get_data_dir(Path("data")) == Path('/data')
+        True
 
         >>> os.environ['SOTD_DATA_DIR'] = '~/sotd-data'
-        >>> get_data_dir(None).name == 'sotd-data'
+        >>> get_data_dir(None) == Path('~/sotd-data').expanduser()
         True
 
         >>> del os.environ['SOTD_DATA_DIR']
-        >>> get_data_dir(None)  # "data" anchored at the repo root
-        Path('.../data')  # doctest: +ELLIPSIS
+        >>> get_data_dir(None) == _repo_root() / "data"  # anchored at the repo root
+        True
     """
     # Convert to Path for comparison
     cli_path = Path(cli_arg) if cli_arg is not None else None
