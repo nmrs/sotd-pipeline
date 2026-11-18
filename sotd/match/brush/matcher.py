@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from sotd.match.types import MatchResult
-from sotd.utils.data_dir import get_default_correct_matches_path
+from sotd.utils.data_dir import get_data_dir, get_default_correct_matches_path
 from sotd.utils.yaml_loader import UniqueKeyLoader, load_yaml_with_nfc
 
 from .config import BrushScoringConfig
@@ -102,10 +102,17 @@ class BrushMatcher:
         self.debug = debug
 
         # Resolve catalog paths (defaults applied before storing, so the
-        # attributes are non-Optional for every consumer)
-        brushes_path = Path("data/brushes.yaml") if brushes_path is None else brushes_path
-        handles_path = Path("data/handles.yaml") if handles_path is None else handles_path
-        knots_path = Path("data/knots.yaml") if knots_path is None else knots_path
+        # attributes are non-Optional for every consumer). Defaults resolve
+        # from the run's data dir (get_data_dir: SOTD_DATA_DIR env var >
+        # "data", relative values anchored at the repo root), so a bare
+        # BrushMatcher() works from any working directory -- previously the
+        # bare CWD-relative Path("data/...") defaults made construction
+        # raise FileNotFoundError (missing scoring config) from anywhere
+        # but the repo root, even with SOTD_DATA_DIR set.
+        data_dir = get_data_dir()
+        brushes_path = data_dir / "brushes.yaml" if brushes_path is None else brushes_path
+        handles_path = data_dir / "handles.yaml" if handles_path is None else handles_path
+        knots_path = data_dir / "knots.yaml" if knots_path is None else knots_path
         if correct_matches_path is None:
             correct_matches_path = get_default_correct_matches_path()
         self.brushes_path = brushes_path
@@ -123,7 +130,7 @@ class BrushMatcher:
 
         # Initialize configuration with provided path or default
         if brush_scoring_config_path is None:
-            brush_scoring_config_path = Path("data/brush_scoring_config.yaml")
+            brush_scoring_config_path = data_dir / "brush_scoring_config.yaml"
 
         # FAIL FAST: Validate scoring configuration exists and is readable
         if not brush_scoring_config_path.exists():
