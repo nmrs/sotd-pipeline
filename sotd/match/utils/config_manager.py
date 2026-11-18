@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from sotd.match.config import BrushMatcherConfig
+from sotd.utils.data_dir import get_default_correct_matches_path
 
 
 class ConfigManager:
@@ -78,7 +79,7 @@ class ConfigManager:
         final_catalog_path = catalog_path or Path("data/brushes.yaml")
         final_handles_path = handles_path or Path("data/handles.yaml")
         final_knots_path = knots_path or Path("data/knots.yaml")
-        final_correct_matches_path = correct_matches_path or Path("data/correct_matches")
+        final_correct_matches_path = correct_matches_path or get_default_correct_matches_path()
 
         return BrushMatcherConfig.create_custom(
             catalog_path=final_catalog_path,

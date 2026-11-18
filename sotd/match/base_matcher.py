@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sotd.utils.catalog_validator import validate_patterns_format
+from sotd.utils.data_dir import get_default_correct_matches_path
 from sotd.utils.yaml_loader import UniqueKeyLoader, load_yaml_with_nfc
 
 from .types import MatchResult, create_match_result
@@ -29,7 +30,7 @@ class BaseMatcher:
     ):
         self.catalog_path = catalog_path
         self.field_type = field_type  # "razor", "blade", "brush", "soap"
-        self.correct_matches_path = correct_matches_path or Path("data/correct_matches")
+        self.correct_matches_path = correct_matches_path or get_default_correct_matches_path()
         self.bypass_correct_matches = bypass_correct_matches
         self.catalog = self._load_catalog()
         self.correct_matches = self._load_correct_matches()

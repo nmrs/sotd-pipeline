@@ -7,13 +7,15 @@ from typing import Any, Dict, Optional
 
 import yaml
 
+from sotd.utils.data_dir import get_default_correct_matches_path
+
 
 class CorrectMatchesUpdater:
     """Handle YAML file operations for correct_matches directory."""
 
     def __init__(self, correct_matches_path: Optional[Path] = None):
         """Initialize updater with path to correct_matches directory."""
-        self.correct_matches_path = correct_matches_path or Path("data/correct_matches")
+        self.correct_matches_path = correct_matches_path or get_default_correct_matches_path()
         self._ensure_directory_exists()
 
     def _ensure_directory_exists(self) -> None:

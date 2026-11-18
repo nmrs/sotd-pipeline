@@ -12,6 +12,7 @@ import yaml
 
 from sotd.match.exceptions import CatalogLoadError
 from sotd.utils.catalog_validator import validate_patterns_format
+from sotd.utils.data_dir import get_default_correct_matches_path
 from sotd.utils.yaml_loader import UniqueKeyLoader, load_yaml_with_nfc
 
 # Global cache for YAML catalog files to avoid repeated loads
@@ -90,8 +91,14 @@ class CatalogLoader:
         self, correct_matches_path: Optional[Path] = None, field_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Load correct matches with graceful error handling and caching.
+        Load correct matches with caching.
+
         Uses the new directory structure: data/correct_matches/{field_type}.yaml
+
+        A missing directory or field file returns {} (same as BaseMatcher).
+        Any other load failure raises ValueError, like
+        BaseMatcher._load_correct_matches: silently falling back to
+        regex-only matching on a corrupt file would corrupt the run.
 
         Args:
             correct_matches_path: Path to correct_matches directory (or legacy single file)
@@ -106,7 +113,7 @@ class CatalogLoader:
             return self._load_legacy_correct_matches(correct_matches_path, field_type)
 
         # New directory structure mode
-        base_path = correct_matches_path or Path("data/correct_matches")
+        base_path = correct_matches_path or get_default_correct_matches_path()
         base_path = base_path.resolve()
 
         if not base_path.exists():
@@ -148,9 +155,13 @@ class CatalogLoader:
                         result[field] = {}
                 return result
 
-        except Exception:
-            # Use the same error handling as BaseMatcher - return empty dict on any error
-            return {}
+        except (yaml.YAMLError, OSError, UnicodeDecodeError) as e:
+            # A missing correct_matches directory or field file is fine
+            # (returns {} above). Any OTHER load failure must surface
+            # loudly, like BaseMatcher._load_correct_matches: silently
+            # falling back to regex-only matching would corrupt the run.
+            target = base_path / f"{field_type}.yaml" if field_type else base_path
+            raise ValueError(f"Failed to load correct matches from {target}: {e}") from e
 
     def _load_legacy_correct_matches(
         self, correct_matches_path: Path, field_type: Optional[str] = None
@@ -160,7 +171,7 @@ class CatalogLoader:
         Maintains backward compatibility with existing correct_matches.yaml.
         """
         try:
-            data = load_yaml_with_nfc(correct_matches_path, loader_cls=UniqueKeyLoader)
+            data = load_yaml_with_nfc(correct_matches_path, loader_cls=UniqueKeyLoader) or {}
             self.load_stats["catalogs_loaded"] += 1  # type: ignore
 
             if field_type:
@@ -175,9 +186,12 @@ class CatalogLoader:
                     "split_brush": data.get("split_brush", {}),
                 }
 
-        except Exception:
-            # Use the same error handling as BaseMatcher - return empty dict on any error
-            return {}
+        except (yaml.YAMLError, OSError, UnicodeDecodeError) as e:
+            # Same loud failure as BaseMatcher._load_correct_matches: a
+            # corrupt legacy file must not silently degrade the run.
+            raise ValueError(
+                f"Failed to load correct matches file {correct_matches_path}: {e}"
+            ) from e
 
     def load_matcher_catalogs(
         self, catalog_path: Path, matcher_type: str, correct_matches_path: Optional[Path] = None
@@ -199,15 +213,12 @@ class CatalogLoader:
         # Load main catalog
         catalogs["catalog"] = self.load_catalog(catalog_path, matcher_type, use_unique_loader=True)
 
-        # Load correct matches for this matcher type - same logic as BaseMatcher
-        try:
-            correct_matches = self.load_correct_matches(
-                correct_matches_path, field_type=matcher_type
-            )
-            catalogs["correct_matches"] = correct_matches
-        except Exception:
-            # Use the same error handling as BaseMatcher
-            catalogs["correct_matches"] = {}
+        # Load correct matches for this matcher type. A corrupt file raises
+        # (see load_correct_matches) instead of silently degrading the
+        # matcher to regex-only matching.
+        catalogs["correct_matches"] = self.load_correct_matches(
+            correct_matches_path, field_type=matcher_type
+        )
 
         return catalogs
 
@@ -228,7 +239,7 @@ class CatalogLoader:
         catalogs["handles"] = self.load_catalog(config.handles_path, "handles")
         catalogs["knots"] = self.load_catalog(config.knots_path, "knots")
 
-        # Load correct matches (with graceful error handling)
+        # Load correct matches (a corrupt file raises; see load_correct_matches)
         catalogs["correct_matches"] = self.load_correct_matches(config.correct_matches_path)
 
         return catalogs

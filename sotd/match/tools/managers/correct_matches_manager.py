@@ -8,6 +8,7 @@ import yaml
 from rich.console import Console
 
 from sotd.utils.competition_tags import load_competition_tags, strip_competition_tags
+from sotd.utils.data_dir import get_default_correct_matches_path
 from sotd.utils.extract_normalization import normalize_for_matching
 
 # Delimiter for item keys to avoid conflicts with characters in original text
@@ -19,7 +20,7 @@ class CorrectMatchesManager:
 
     def __init__(self, console: Console, correct_matches_file: Path | None = None):
         self.console = console
-        self._correct_matches_file = correct_matches_file or Path("data/correct_matches")
+        self._correct_matches_file = correct_matches_file or get_default_correct_matches_path()
         self._correct_matches: Set[str] = set()
         self._correct_matches_data = {}
         # Load existing data if file exists

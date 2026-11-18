@@ -31,29 +31,22 @@ class SoapMatcher(BaseMatcher):
             correct_matches_path=correct_matches_path,
             bypass_correct_matches=bypass_correct_matches,
         )
-        # Override catalog and correct_matches from BaseMatcher with direct loading
+        # Override catalog from BaseMatcher with direct loading
         self.catalog_path = catalog_path
         self.catalog = load_yaml_with_nfc(catalog_path)
         # Validate patterns format before proceeding
         validate_patterns_format(self.catalog, catalog_path)
-        # Use default path if not provided
-        if correct_matches_path is None:
-            correct_matches_path = Path("data/correct_matches")
-
-        # Load correct matches using the new directory structure
-        if not bypass_correct_matches:
-            if correct_matches_path.is_file():
-                # Legacy single file mode
-                self.correct_matches = load_yaml_with_nfc(correct_matches_path).get("soap", {})
-            else:
-                # New directory structure mode
-                soap_file = correct_matches_path / "soap.yaml"
-                if soap_file.exists():
-                    self.correct_matches = load_yaml_with_nfc(soap_file)
-                else:
-                    self.correct_matches = {}
-        else:
+        # BaseMatcher already resolved self.correct_matches_path (explicit
+        # arg or the run data-dir default) and loaded self.correct_matches
+        # for the directory mode. Only the legacy single-file mode needs
+        # separate handling here; re-deriving the default duplicated that
+        # logic and reloaded the YAML uncached.
+        if bypass_correct_matches:
             self.correct_matches = {}
+        elif self.correct_matches_path.is_file():
+            # Legacy single file mode
+            self.correct_matches = load_yaml_with_nfc(self.correct_matches_path).get("soap", {})
+        # else: directory mode, already loaded by BaseMatcher.
         self.scent_patterns, self.brand_patterns = self._compile_patterns()
         self._match_cache = {}
         # O(1) case-insensitive lookup dictionary

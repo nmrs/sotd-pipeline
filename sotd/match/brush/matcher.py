@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from sotd.match.types import MatchResult
+from sotd.utils.data_dir import get_default_correct_matches_path
 
 from .config import BrushScoringConfig
 from .handle_matcher import HandleMatcher
@@ -113,7 +114,7 @@ class BrushMatcher:
         if self.knots_path is None:
             self.knots_path = Path("data/knots.yaml")
         if self.correct_matches_path is None:
-            self.correct_matches_path = Path("data/correct_matches")
+            self.correct_matches_path = get_default_correct_matches_path()
 
         # FAIL FAST: Validate that all catalog files exist and are readable
         # Only validate in debug mode to avoid expensive validation overhead in parallel workers

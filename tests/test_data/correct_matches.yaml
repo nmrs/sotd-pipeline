@@ -19,9 +19,6 @@ razor:
   koraat:
     moarteen:
       - koraat moarteen
-      grind: full_hollow
-      width: 15/16
-      point: round
 
 soap:
   declaration grooming:
