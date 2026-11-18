@@ -27,35 +27,18 @@ from sotd.utils.yaml_loader import load_yaml_with_nfc
 logger = logging.getLogger(__name__)
 
 
-def _repo_root() -> Path:
-    """Repo root, anchored at this file (``sotd/fetch/overrides.py``)."""
-    return Path(__file__).resolve().parent.parent.parent
-
-
 def get_default_override_path(cli_arg: Optional[Path | str] = None) -> Path:
     """Default thread-overrides path: ``<data dir>/thread_overrides.yaml``.
 
     The data dir is the run's data dir (``get_data_dir(cli_arg)``:
-    ``--data-dir`` > ``SOTD_DATA_DIR`` env var > ``"data"``). A relative data
-    dir is anchored at the repo root so the path does not depend on the
-    process working directory — previously this was a bare CWD-relative
+    ``--data-dir`` > ``SOTD_DATA_DIR`` env var > ``"data"``), which also
+    anchors relative values at the repo root and expands a leading ``~`` —
+    so this path never depends on the process working directory.
+    Previously this was a bare CWD-relative
     ``Path("data/thread_overrides.yaml")``, so running fetch from any
     directory but the repo root silently dropped every include and exclude.
-    A ``~``-prefixed data dir is expanded (compose env files deliver
-    ``SOTD_DATA_DIR='~/sotd-data'`` verbatim).
-
-    NOTE on relative data dirs: fetch output paths (``threads/``,
-    ``comments/``) resolve the same data dir CWD-relative via
-    ``get_data_dir()``, so with a relative ``SOTD_DATA_DIR`` and a foreign
-    CWD the overrides file and the fetched output live in different trees.
-    Anchoring output paths the same way is follow-up work (see the series
-    note on converging data-dir resolution in ``sotd/utils/data_dir.py``);
-    absolute data dirs — the container layout — are unaffected.
     """
-    data_dir = get_data_dir(cli_arg).expanduser()
-    if not data_dir.is_absolute():
-        data_dir = _repo_root() / data_dir
-    return data_dir / "thread_overrides.yaml"
+    return get_data_dir(cli_arg) / "thread_overrides.yaml"
 
 
 OVERRIDE_PATH = get_default_override_path()

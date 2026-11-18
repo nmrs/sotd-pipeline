@@ -173,9 +173,7 @@ def search_threads(
         logger.debug("Analyzing thread patterns to identify missing days")
 
     # First filter the broad results to only current year/month
-    filtered_results = filter_valid_threads(
-        list(all_results.values()), year, month, debug=debug
-    )
+    filtered_results = filter_valid_threads(list(all_results.values()), year, month, debug=debug)
 
     # Analyze filtered results to determine expected threads per day
     from collections import defaultdict
@@ -219,9 +217,7 @@ def search_threads(
     max_day_to_check = today.day if is_current_month else 31
 
     missing_days = []
-    for day in range(
-        1, max_day_to_check + 1
-    ):  # Only check up to current date for current month
+    for day in range(1, max_day_to_check + 1):  # Only check up to current date for current month
         current_count = len(threads_by_day[day])
         if current_count < expected_threads_per_day:
             missing_count = expected_threads_per_day - current_count
@@ -248,9 +244,7 @@ def search_threads(
             for query in day_queries:
                 if debug:
                     logger.debug(f"Missing thread query: {query!r}")
-                raw_results = safe_call(
-                    subreddit.search, query, sort="relevance", syntax="lucene"
-                )
+                raw_results = safe_call(subreddit.search, query, sort="relevance", syntax="lucene")
                 if raw_results is None:
                     raw_results = []
                 raw_results = list(raw_results)

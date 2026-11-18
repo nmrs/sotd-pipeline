@@ -44,9 +44,12 @@ def get_data_dir(cli_arg: Optional[Path | str] = None) -> Path:
 
     A relative result is anchored at the repo root (see ``_repo_root``),
     so the returned path never depends on the process working directory.
-    Absolute values are returned unchanged. When the package is installed
-    rather than checked out (no repo root found), a relative result is
-    returned unanchored, as before.
+    A ``~``-prefixed value (env var or CLI arg) is expanded to the home
+    directory before anchoring — compose env files deliver
+    ``SOTD_DATA_DIR='~/sotd-data'`` verbatim, and every consumer must agree
+    on one tree for it. Absolute values are returned unchanged. When the
+    package is installed rather than checked out (no repo root found), a
+    relative result is returned unanchored, as before.
 
     Args:
         cli_arg: Optional Path or str from CLI argument (--data-dir).
@@ -65,9 +68,13 @@ def get_data_dir(cli_arg: Optional[Path | str] = None) -> Path:
         >>> get_data_dir(Path("data"))
         Path('/data')
 
+        >>> os.environ['SOTD_DATA_DIR'] = '~/sotd-data'
+        >>> get_data_dir(None).name == 'sotd-data'
+        True
+
         >>> del os.environ['SOTD_DATA_DIR']
         >>> get_data_dir(None)  # "data" anchored at the repo root
-        Path('.../data')
+        Path('.../data')  # doctest: +ELLIPSIS
     """
     # Convert to Path for comparison
     cli_path = Path(cli_arg) if cli_arg is not None else None
@@ -85,6 +92,11 @@ def get_data_dir(cli_arg: Optional[Path | str] = None) -> Path:
     else:
         # CLI argument takes highest precedence (non-default value)
         data_dir = cli_path
+
+    # Expand a leading ~ before anchoring: Path("~/sotd-data") is not
+    # absolute, so a ~-value anchored first would land inside <repo>/~/...
+    # (compose env files deliver the env var verbatim).
+    data_dir = data_dir.expanduser()
 
     # Anchor relative data dirs at the repo root so all consumers agree
     # on one tree for the same value, whatever the working directory.

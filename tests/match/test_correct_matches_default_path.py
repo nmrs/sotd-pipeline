@@ -74,9 +74,7 @@ def test_sotd_data_dir_cm_is_used(monkeypatch, tmp_path):
     )
     catalog_path = tmp_path / "razors.yaml"
     catalog_path.write_text(
-        yaml.safe_dump(
-            {"MarkerBrand": {"MarkerModel": {"patterns": ["marker"], "format": "DE"}}}
-        ),
+        yaml.safe_dump({"MarkerBrand": {"MarkerModel": {"patterns": ["marker"], "format": "DE"}}}),
         encoding="utf-8",
     )
     monkeypatch.setenv("SOTD_DATA_DIR", str(data_dir))
@@ -97,9 +95,7 @@ def test_explicit_cm_path_wins_over_default(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("SOTD_DATA_DIR", raising=False)
 
-    matcher = RazorMatcher(
-        catalog_path=DATA_DIR / "razors.yaml", correct_matches_path=empty_cm
-    )
+    matcher = RazorMatcher(catalog_path=DATA_DIR / "razors.yaml", correct_matches_path=empty_cm)
     assert matcher.correct_matches_path == empty_cm
     assert matcher.correct_matches == {}
 

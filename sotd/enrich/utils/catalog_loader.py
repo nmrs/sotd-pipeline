@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from sotd.match.utils.regex_error_utils import compile_regex_with_context, create_context_dict
+from sotd.utils.data_dir import get_data_dir
 
 
 class CatalogLoader:
@@ -21,7 +22,15 @@ class CatalogLoader:
     """
 
     def __init__(self, data_path: Optional[Path] = None):
-        self.data_path = data_path or Path("data")
+        # Default is the run's data dir (get_data_dir: SOTD_DATA_DIR env var
+        # > "data", relative values anchored at the repo root) — the same
+        # tree SoapMashupEnricher's get_default_soaps_path() resolves, so
+        # both enrichers registered by setup_enrichers() read one tree when
+        # no data_path is passed. (Previously the default was a bare
+        # CWD-relative Path("data"), so with SOTD_DATA_DIR set the mashup
+        # enricher read $SOTD_DATA_DIR/soaps.yaml while this loader read
+        # CWD-relative ./data/handles.yaml and ./data/knots.yaml.)
+        self.data_path = Path(data_path) if data_path is not None else get_data_dir()
         self._pattern_cache: Dict[str, List[str]] = {}
         self._compiled_pattern_cache: Dict[str, List[re.Pattern]] = {}
         self._handle_defaults_cache: Dict[str, Dict[str, Any]] = {}

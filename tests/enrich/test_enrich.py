@@ -82,12 +82,12 @@ def test_setup_enrichers_data_path_repoints_brush_catalog_loader(tmp_path):
     try:
         brush = _brush_enricher()
         assert brush.catalog_loader.data_path == data_dir
-        assert brush.catalog_loader.load_handle_patterns(
-            "ReproBrand", "ReproModel"
-        ) == ["repro.*handle"]
-        assert brush.catalog_loader.load_handle_maker_defaults(
-            "ReproBrand", "ReproModel"
-        ) == {"knot_size_mm": 26}
+        assert brush.catalog_loader.load_handle_patterns("ReproBrand", "ReproModel") == [
+            "repro.*handle"
+        ]
+        assert brush.catalog_loader.load_handle_maker_defaults("ReproBrand", "ReproModel") == {
+            "knot_size_mm": 26
+        }
     finally:
         # Restore the shared loader to the repo default so later tests in
         # this process see the real catalogs again.

@@ -994,8 +994,7 @@ def test_search_threads_broad_query_omits_full_month_name():
     # Complete month so the completeness check finds no missing days and
     # runs no day-specific queries (which would pollute the query capture).
     complete_month = [
-        MockSubmission(f"s{day:02d}", f"SOTD Thread Aug {day:02d}, 2025")
-        for day in range(1, 32)
+        MockSubmission(f"s{day:02d}", f"SOTD Thread Aug {day:02d}, 2025") for day in range(1, 32)
     ]
 
     class QueryCaptureSubreddit(MockSubreddit):
@@ -1102,8 +1101,7 @@ def test_search_threads_complete_month_runs_no_day_queries():
     """
     queries: list[str] = []
     all_threads = [
-        MockSubmission(f"s{day:02d}", f"SOTD Thread May {day:02d}, 2025")
-        for day in range(1, 32)
+        MockSubmission(f"s{day:02d}", f"SOTD Thread May {day:02d}, 2025") for day in range(1, 32)
     ]
 
     class QueryCaptureSubreddit:

@@ -21,6 +21,7 @@ from unittest.mock import Mock
 
 import yaml
 
+from sotd.match.brush.comparison.splits_loader import BrushSplitsLoader
 from sotd.match.brush.config import BrushScoringConfig
 from sotd.match.brush.strategies.automated.automated_split_strategy import (
     AutomatedSplitStrategy,
@@ -226,9 +227,7 @@ class TestBrushMatcherWiresDataDirBrushSplitsPath:
         )
 
         strategies = matcher.strategy_orchestrator.strategies
-        automated = next(
-            s for s in strategies if type(s).__name__ == "AutomatedSplitStrategy"
-        )
+        automated = next(s for s in strategies if type(s).__name__ == "AutomatedSplitStrategy")
         full_input = next(
             s for s in strategies if type(s).__name__ == "FullInputComponentMatchingStrategy"
         )
@@ -244,3 +243,61 @@ class TestBrushMatcherWiresDataDirBrushSplitsPath:
         # And the curated entries are honored through the wired strategies.
         assert automated.match("Synthetic Test Handle w/ Synthetic Test Knot 24mm") is None
         assert full_input.match("Synthetic Boar Test Brush SOC knot 24mm") is None
+
+
+class TestBrushSplitsLoaderPreloadedData:
+    """BrushMatcher seeds its one BrushSplitsLoader with the already-parsed
+    catalogs["brush_splits"] dict so brush_splits.yaml is read once per
+    matcher and both consumers (the dict and the loader) see the same
+    UniqueKeyLoader-validated parse."""
+
+    def test_preloaded_data_built_without_reading_file(self, tmp_path):
+        data = {
+            "Synthetic Test Brush": {
+                "handle": "Synthetic Test Handle",
+                "knot": "Synthetic Test Knot",
+            }
+        }
+        missing_path = tmp_path / "does_not_exist.yaml"
+        loader = BrushSplitsLoader(missing_path, data=data)
+        assert loader.brush_splits_path == missing_path
+        assert loader.get_splits_count() == 1
+        assert loader.get_handle_and_knot("Synthetic Test Brush") == (
+            "Synthetic Test Handle",
+            "Synthetic Test Knot",
+        )
+
+    def test_preloaded_data_respects_should_not_split(self, tmp_path):
+        data = {
+            "Synthetic Test Brush": {
+                "handle": "Synthetic Test Handle",
+                "knot": "Synthetic Test Knot",
+                "should_not_split": True,
+            }
+        }
+        loader = BrushSplitsLoader(tmp_path / "nope.yaml", data=data)
+        assert loader.should_not_split("Synthetic Test Brush") is True
+
+    def test_preloaded_data_skips_non_dict_entries(self, tmp_path):
+        """A non-dict entry has no .copy() — skipped like the file path does."""
+        data = {
+            "Good Brush": {"handle": "h", "knot": "k"},
+            "Bad Brush": "not a dict",
+        }
+        loader = BrushSplitsLoader(tmp_path / "nope.yaml", data=data)
+        assert loader.get_splits_count() == 1
+
+    def test_no_data_argument_still_reads_file(self, tmp_path):
+        content = (
+            "Synthetic Test Brush:\n"
+            "  handle: Synthetic Test Handle\n"
+            "  knot: Synthetic Test Knot\n"
+        )
+        path = tmp_path / "brush_splits.yaml"
+        path.write_text(content)
+        loader = BrushSplitsLoader(path)
+        assert loader.get_splits_count() == 1
+        assert loader.get_handle_and_knot("Synthetic Test Brush") == (
+            "Synthetic Test Handle",
+            "Synthetic Test Knot",
+        )

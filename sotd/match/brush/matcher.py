@@ -11,6 +11,7 @@ import yaml
 
 from sotd.match.types import MatchResult
 from sotd.utils.data_dir import get_default_correct_matches_path
+from sotd.utils.yaml_loader import UniqueKeyLoader, load_yaml_with_nfc
 
 from .config import BrushScoringConfig
 from .handle_matcher import HandleMatcher
@@ -385,7 +386,20 @@ class BrushMatcher:
         catalogs["knots"] = self._load_yaml_file(self.knots_path)
         catalogs["correct_matches"] = self._load_correct_matches_catalog()
         # brush_splits.yaml lives beside brushes.yaml in the run's data dir.
-        catalogs["brush_splits"] = self._load_yaml_file(self._brush_splits_path)
+        # Parsed with UniqueKeyLoader (not _load_yaml_file) so duplicate keys
+        # fail the load loudly — the same validation BrushSplitsLoader applies
+        # — and this one parse feeds both consumers: KnownSplitWrapperStrategy
+        # gets the dict, the split strategies get it via BrushSplitsLoader(data=...).
+        if self._brush_splits_path.exists():
+            try:
+                catalogs["brush_splits"] = load_yaml_with_nfc(
+                    self._brush_splits_path, loader_cls=UniqueKeyLoader
+                )
+            except yaml.YAMLError as e:
+                # FAIL FAST: YAML syntax errors should cause immediate failure
+                raise ValueError(f"YAML syntax error in {self._brush_splits_path.absolute()}: {e}")
+        else:
+            catalogs["brush_splits"] = {}
 
         # Validate patterns format for all catalog files
         from sotd.utils.catalog_validator import validate_patterns_format
@@ -457,11 +471,12 @@ class BrushMatcher:
         # Add the automated split strategy for high/medium priority splitting
         # This should run BEFORE OtherBrushMatchingStrategy to allow splitting
         # of strings like "Elite Razor Trustone W/Long Shaving 26mm Reserve VI Badger"
-        # Both brush-split strategies share one BrushSplitsLoader, built
-        # from the run's data-dir path (same directory as brushes.yaml).
-        # Sharing the loader parses brush_splits.yaml once per matcher
-        # instead of once per strategy -- and, before this change, once per
-        # match() call in _precompute_handle_knot_results. Passing the
+        # Both brush-split strategies share one BrushSplitsLoader, seeded
+        # with the already-parsed catalogs["brush_splits"] (loaded above
+        # from the run's data-dir path beside brushes.yaml with duplicate-key
+        # validation) so brush_splits.yaml is parsed once per matcher, not
+        # once per strategy -- and, before this change, once per match()
+        # call in _precompute_handle_knot_results. Passing the seeded
         # loader, never a bare path, keeps the strategies off the
         # CWD-relative data/brush_splits.yaml default, which silently drops
         # every curated should_not_split entry from any working directory
@@ -471,7 +486,9 @@ class BrushMatcher:
             AutomatedSplitStrategy,
         )
 
-        splits_loader = BrushSplitsLoader(self._brush_splits_path)
+        splits_loader = BrushSplitsLoader(
+            self._brush_splits_path, data=catalogs.get("brush_splits", {})
+        )
 
         strategies.append(
             AutomatedSplitStrategy(

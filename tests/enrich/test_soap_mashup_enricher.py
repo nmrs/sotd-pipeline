@@ -12,7 +12,6 @@ import pytest
 
 from sotd.enrich.soap_mashup_enricher import SoapMashupEnricher, get_default_soaps_path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 FIXTURE_SOAPS = """

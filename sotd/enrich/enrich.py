@@ -34,7 +34,8 @@ def setup_enrichers(
         data_path: Path to the data directory holding the catalogs
             (handles.yaml, knots.yaml, soaps.yaml). Passed to the
             BrushEnricher's CatalogLoader and the SoapMashupEnricher; when
-            None, enrichers fall back to their CWD-relative defaults on
+            None, enrichers fall back to their get_data_dir() defaults
+            (SOTD_DATA_DIR env var > "data", repo-root anchored) on
             first registration, and a repeat call with None leaves
             already-registered enrichers pointed where they are. On repeat
             calls a given data_path re-points already-registered enrichers
@@ -84,9 +85,7 @@ def setup_enrichers(
     enricher_registry.register(BlackbirdPlateEnricher())
     enricher_registry.register(SoapSampleEnricher())
     enricher_registry.register(
-        SoapMashupEnricher(
-            soaps_path=data_path / "soaps.yaml" if data_path is not None else None
-        )
+        SoapMashupEnricher(soaps_path=data_path / "soaps.yaml" if data_path is not None else None)
     )
     enricher_registry.register(SuperSpeedVariantEnricher())
     enricher_registry.register(RazorFormatEnricher())
