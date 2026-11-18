@@ -2,11 +2,10 @@
 """Integration tests for should_not_split behavior in FullInputComponentMatchingStrategy."""
 
 import tempfile
-import yaml
 from pathlib import Path
 from unittest.mock import Mock
 
-import pytest
+import yaml
 
 from sotd.match.brush.strategies.full_input_component_matching_strategy import (
     FullInputComponentMatchingStrategy,
@@ -53,17 +52,15 @@ class TestFullInputComponentMatchingStrategyShouldNotSplitIntegration:
         self.knot_matcher = Mock()
         self.catalogs = {"brushes": {}, "handles": {}, "knots": {}, "correct_matches": {}}
 
-        # Create strategy with test brush_splits path
-        # We need to patch the path after initialization or use a custom path
+        # Create strategy with the test brush_splits file via a shared loader.
+        from sotd.match.brush.comparison.splits_loader import BrushSplitsLoader
+
         self.strategy = FullInputComponentMatchingStrategy(
             handle_matcher=self.handle_matcher,
             knot_matcher=self.knot_matcher,
             catalogs=self.catalogs,
+            splits_loader=BrushSplitsLoader(self.test_brush_splits_path),
         )
-        # Patch the splits_loader to use our test file
-        from sotd.match.brush.comparison.splits_loader import BrushSplitsLoader
-
-        self.strategy.splits_loader = BrushSplitsLoader(self.test_brush_splits_path)
 
     def teardown_method(self):
         """Clean up test fixtures."""

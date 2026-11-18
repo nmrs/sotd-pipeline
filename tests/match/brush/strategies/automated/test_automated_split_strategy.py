@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Test file for AutomatedSplitStrategy (unified high/medium priority split strategy)."""
 
+from pathlib import Path
 from unittest.mock import Mock
 
-from sotd.match.brush.strategies.automated.automated_split_strategy import AutomatedSplitStrategy
 from sotd.match.brush.config import BrushScoringConfig
+from sotd.match.brush.strategies.automated.automated_split_strategy import AutomatedSplitStrategy
 
 
 class TestAutomatedSplitStrategy:
@@ -20,7 +21,11 @@ class TestAutomatedSplitStrategy:
         self.knot_matcher = Mock()
 
         self.strategy = AutomatedSplitStrategy(
-            self.catalogs, self.scoring_config, self.handle_matcher, self.knot_matcher
+            self.catalogs,
+            self.scoring_config,
+            self.handle_matcher,
+            self.knot_matcher,
+            brush_splits_path=Path("data/brush_splits.yaml"),
         )
 
     def test_high_priority_delimiter_with_match(self):

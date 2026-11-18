@@ -58,7 +58,11 @@ class TestAutomatedSplitBlackEagleHT2:
 
         # Create the automated split strategy
         self.strategy = AutomatedSplitStrategy(
-            self.test_catalogs, self.scoring_config, self.handle_matcher, self.knot_matcher
+            self.test_catalogs,
+            self.scoring_config,
+            self.handle_matcher,
+            self.knot_matcher,
+            brush_splits_path=Path("data/brush_splits.yaml"),
         )
 
     def test_automated_split_splits_correctly(self):

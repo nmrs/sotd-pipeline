@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Tests for AutomatedSplitStrategy multi-split functionality."""
 
+from pathlib import Path
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 from sotd.match.brush.strategies.automated.automated_split_strategy import (
     AutomatedSplitStrategy,
@@ -55,7 +57,11 @@ class TestAutomatedSplitStrategyMulti:
     def strategy(self, mock_catalogs, mock_scoring_config, mock_handle_matcher, mock_knot_matcher):
         """Create AutomatedSplitStrategy instance for testing."""
         return AutomatedSplitStrategy(
-            mock_catalogs, mock_scoring_config, mock_handle_matcher, mock_knot_matcher
+            mock_catalogs,
+            mock_scoring_config,
+            mock_handle_matcher,
+            mock_knot_matcher,
+            brush_splits_path=Path("data/brush_splits.yaml"),
         )
 
     def test_match_all_single_delimiter(self, strategy):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for FullInputComponentMatchingStrategy."""
 
+from pathlib import Path
 from unittest.mock import Mock
 
 from sotd.match.brush.strategies.full_input_component_matching_strategy import (
@@ -22,6 +23,7 @@ class TestFullInputComponentMatchingStrategy:
             handle_matcher=self.handle_matcher,
             knot_matcher=self.knot_matcher,
             catalogs=self.catalogs,
+            brush_splits_path=Path("data/brush_splits.yaml"),
         )
 
     def test_init_with_required_components(self):
