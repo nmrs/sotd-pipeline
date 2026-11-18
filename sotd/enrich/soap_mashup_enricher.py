@@ -85,3 +85,17 @@ class SoapMashupEnricher(BaseEnricher):
                 is_mashup = True
 
         return {"is_mashup": is_mashup}
+
+    def set_data_path(self, data_path: Path) -> None:
+        """Point the mashup catalog at a different data directory.
+
+        Drops the cached soaps catalog so the next lookup reads from the
+        new directory. A no-op when the path is unchanged. (The registry
+        caches enricher instances across a multi-month run, so without this
+        a data dir set at first setup would stick for the whole process.)
+        """
+        soaps_path = Path(data_path) / "soaps.yaml"
+        if soaps_path.resolve() == self.soaps_path.resolve():
+            return
+        self.soaps_path = soaps_path
+        self._soaps_catalog = None

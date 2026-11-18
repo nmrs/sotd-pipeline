@@ -77,8 +77,10 @@ def _process_month(
         # Add month to record metadata for override lookups
         comment["_month"] = ym
 
-    # Setup enrichers with override manager
-    setup_enrichers(override_manager=override_manager)
+    # Setup enrichers with override manager and the run's data dir, so the
+    # BrushEnricher's CatalogLoader reads handles.yaml/knots.yaml from the
+    # configured data dir instead of CWD-relative Path("data").
+    setup_enrichers(override_manager=override_manager, data_path=base_path)
 
     # Enrich the comments
     enriched_comments = enrich_comments(comments, original_comments)
@@ -119,7 +121,9 @@ def run(args: argparse.Namespace) -> bool:
     base_path = get_data_dir(args.data_dir)
 
     # Set up enrichers once at the start - this is a major performance optimization
-    setup_enrichers()
+    # Pass the resolved data dir so catalog-backed enrichers (BrushEnricher)
+    # read from the run's data dir, not CWD-relative Path("data").
+    setup_enrichers(data_path=base_path)
 
     # Create parallel processor for enrich phase
     processor = create_parallel_processor("enrich")
