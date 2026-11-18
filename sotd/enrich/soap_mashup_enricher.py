@@ -3,10 +3,26 @@
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from sotd.utils.data_dir import get_data_dir
 from sotd.utils.soap_extraction import detect_soap_mashup
 from sotd.utils.yaml_loader import load_yaml_with_nfc
 
 from .enricher import BaseEnricher
+
+
+def get_default_soaps_path() -> Path:
+    """Default soaps.yaml: ``<data dir>/soaps.yaml``.
+
+    The data dir is ``get_data_dir()`` (``SOTD_DATA_DIR`` env var >
+    ``"data"``), with relative values anchored at the repo root inside
+    ``get_data_dir()`` so the path does not depend on the process working
+    directory. The ``--data-dir`` CLI value is honored one level up:
+    ``run.py`` resolves it and passes the data dir into
+    ``setup_enrichers()``, which constructs this enricher with the
+    explicit path (and re-points it on repeat calls via ``set_data_path``)
+    — the default here is only for direct construction.
+    """
+    return get_data_dir() / "soaps.yaml"
 
 
 class SoapMashupEnricher(BaseEnricher):
@@ -23,7 +39,7 @@ class SoapMashupEnricher(BaseEnricher):
     """
 
     def __init__(self, soaps_path: Optional[Path] = None):
-        self.soaps_path = soaps_path or Path("data/soaps.yaml")
+        self.soaps_path = soaps_path or get_default_soaps_path()
         self._soaps_catalog: Optional[Dict[str, Any]] = None
 
     def _get_soaps_catalog(self) -> Dict[str, Any]:
