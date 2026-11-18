@@ -21,6 +21,7 @@ from tqdm import tqdm
 
 from sotd.cli_utils.date_span import month_span
 from sotd.fetch.merge import merge_records
+from sotd.fetch.overrides import get_default_override_path
 from sotd.fetch.save import load_month_file, write_month_file
 from sotd.fetch_via_json.comments import fetch_comments_for_threads_json
 from sotd.fetch_via_json.json_scraper import get_reddit_cookies, get_reddit_session
@@ -85,7 +86,17 @@ def _process_month(
         logger.debug(f"Searching for threads in {year:04d}-{month:02d}")
 
     # Search for threads
-    threads = search_threads_json("wetshaving", year, month, debug=args.debug, cookies=cookies)
+    # Thread the --data-dir value to the overrides path so a custom data dir
+    # gets its own include/exclude overrides (not the repo's data/ copy).
+    override_path = get_default_override_path(args.data_dir)
+    threads = search_threads_json(
+        "wetshaving",
+        year,
+        month,
+        debug=args.debug,
+        cookies=cookies,
+        override_path=override_path,
+    )
 
     if args.debug:
         logger.debug(f"Found {len(threads)} valid threads")

@@ -9,7 +9,8 @@ import logging
 import os
 import time
 from datetime import date as _date
-from typing import List, Sequence, TypeVar, cast
+from pathlib import Path
+from typing import List, Optional, Sequence, TypeVar, cast
 
 import praw
 from praw.models import Comment, Submission
@@ -118,7 +119,12 @@ def get_reddit() -> praw.Reddit:  # noqa: D401
 # searching & filtering                                                       #
 # --------------------------------------------------------------------------- #
 def search_threads(
-    subreddit_name: str, year: int, month: int, *, debug: bool = False
+    subreddit_name: str,
+    year: int,
+    month: int,
+    *,
+    debug: bool = False,
+    override_path: Optional[Path] = None,
 ) -> List[Submission]:
     reddit = get_reddit()
     subreddit = reddit.subreddit(subreddit_name)
@@ -260,7 +266,9 @@ def search_threads(
 
     # Process thread overrides (includes)
     month_str = f"{year:04d}-{month:02d}"
-    override_threads = process_thread_overrides(month_str, reddit, debug=debug)
+    override_threads = process_thread_overrides(
+        month_str, reddit, debug=debug, override_path=override_path
+    )
 
     # Add override threads to results (existing deduplication will handle duplicates)
     for override_thread in override_threads:
@@ -270,9 +278,13 @@ def search_threads(
         logger.debug(f"Added {len(override_threads)} override threads")
 
     # Apply excludes from YAML before date filtering
-    from sotd.fetch.overrides import apply_thread_excludes, load_thread_exclude_ids
+    from sotd.fetch.overrides import (
+        OVERRIDE_PATH,
+        apply_thread_excludes,
+        load_thread_exclude_ids,
+    )
 
-    exclude_ids = load_thread_exclude_ids(month_str)
+    exclude_ids = load_thread_exclude_ids(month_str, path=override_path or OVERRIDE_PATH)
     combined = apply_thread_excludes(list(all_results.values()), exclude_ids, debug=debug)
     if debug and exclude_ids:
         logger.debug(f"Applied {len(exclude_ids)} thread excludes")
@@ -371,7 +383,7 @@ def fetch_top_level_comments_parallel(
     """
     import concurrent.futures
     import time
-    from typing import Optional, Tuple
+    from typing import Tuple
 
     if not submissions:
         return ([], {}) if return_metrics else []
@@ -516,18 +528,25 @@ def fetch_top_level_comments_parallel(
 # --------------------------------------------------------------------------- #
 
 
-def load_thread_overrides(month: str) -> List[str]:
+def load_thread_overrides(month: str, override_path: Optional[Path] = None) -> List[str]:
     """Load manual include URLs from YAML ``include`` section for *month*.
 
     Args:
         month: Month in YYYY-MM format (e.g., "2025-06")
+        override_path: Explicit overrides file; defaults to the run's
+            default overrides path (``--data-dir`` > ``SOTD_DATA_DIR`` >
+            ``"data"``, anchored at the repo root).
 
     Returns:
         List of Reddit URLs for manual override threads
     """
-    from sotd.fetch.overrides import OVERRIDE_PATH, iter_month_urls, load_thread_overrides_data
+    from sotd.fetch.overrides import (
+        OVERRIDE_PATH,
+        iter_month_urls,
+        load_thread_overrides_data,
+    )
 
-    data = load_thread_overrides_data(OVERRIDE_PATH)
+    data = load_thread_overrides_data(override_path or OVERRIDE_PATH)
     include = data.get("include")
     if not isinstance(include, dict):
         return []
@@ -562,11 +581,17 @@ def validate_thread_override(url: str, reddit) -> Submission:
         raise ValueError(f"Failed to fetch thread override: {url} - {e}")
 
 
-def process_thread_overrides(month: str, reddit, debug: bool = False) -> List[Submission]:
+def process_thread_overrides(
+    month: str, reddit, debug: bool = False, override_path: Optional[Path] = None
+) -> List[Submission]:
     """Load and validate include URLs from YAML for *month*."""
-    from sotd.fetch.overrides import OVERRIDE_PATH, iter_month_urls, load_thread_overrides_data
+    from sotd.fetch.overrides import (
+        OVERRIDE_PATH,
+        iter_month_urls,
+        load_thread_overrides_data,
+    )
 
-    data = load_thread_overrides_data(OVERRIDE_PATH)
+    data = load_thread_overrides_data(override_path or OVERRIDE_PATH)
     include = data.get("include")
     if not isinstance(include, dict):
         if debug:

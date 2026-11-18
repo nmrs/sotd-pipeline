@@ -40,11 +40,13 @@ def test_search_threads_json_applies_excludes(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "sotd.fetch_via_json.search.process_thread_overrides_json",
-        lambda month, cookies=None, session=None, debug=False: [{"id": "1ttrafo", "title": "Joke"}],
+        lambda month, cookies=None, session=None, debug=False, override_path=None: [
+            {"id": "1ttrafo", "title": "Joke"}
+        ],
     )
     monkeypatch.setattr(
         "sotd.fetch_via_json.search.load_thread_exclude_ids",
-        lambda month: {"1ttrafo"},
+        lambda month, path=None: {"1ttrafo"},
     )
     monkeypatch.setattr(
         "sotd.fetch_via_json.search.search_reddit_json",

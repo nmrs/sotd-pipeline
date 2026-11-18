@@ -29,6 +29,7 @@ from sotd.cli_utils.date_span import month_span
 from sotd.fetch.audit import _audit_months, list_available_months
 from sotd.fetch.cli import get_parser
 from sotd.fetch.merge import merge_records
+from sotd.fetch.overrides import get_default_override_path
 from sotd.fetch.reddit import (
     fetch_top_level_comments_parallel,
     get_reddit,
@@ -81,7 +82,12 @@ def _process_month(
     reddit,
 ) -> dict:
     """Fetch + merge + save for one calendar month."""
-    threads = search_threads("wetshaving", year, month, debug=args.debug)
+    # Thread the --data-dir value to the overrides path so a custom data dir
+    # gets its own include/exclude overrides (not the repo's data/ copy).
+    override_path = get_default_override_path(args.data_dir)
+    threads = search_threads(
+        "wetshaving", year, month, debug=args.debug, override_path=override_path
+    )
 
     if args.debug:
         logger.debug(f"Found {len(threads)} valid threads")

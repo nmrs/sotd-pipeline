@@ -8,6 +8,7 @@ from __future__ import annotations
 import calendar
 from collections import defaultdict
 from datetime import date
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sotd.fetch.overrides import (
@@ -83,6 +84,7 @@ def search_threads_json(
     *,
     debug: bool = False,
     cookies: Optional[dict] = None,
+    override_path: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     """Search for SOTD threads using Reddit's JSON API.
 
@@ -241,7 +243,11 @@ def search_threads_json(
     # Process thread overrides (JSON version - no PRAW)
     month_str = f"{year:04d}-{month:02d}"
     override_threads = process_thread_overrides_json(
-        month_str, cookies=cookies, session=session, debug=debug
+        month_str,
+        cookies=cookies,
+        session=session,
+        debug=debug,
+        override_path=override_path,
     )
 
     # Add override threads to results (deduplication by ID)
@@ -252,7 +258,7 @@ def search_threads_json(
         print(f"[DEBUG] Added {len(override_threads)} override threads")
 
     # Apply YAML excludes before date filtering
-    exclude_ids = load_thread_exclude_ids(month_str)
+    exclude_ids = load_thread_exclude_ids(month_str, path=override_path or OVERRIDE_PATH)
     combined = apply_thread_excludes(list(all_results.values()), exclude_ids, debug=debug)
     if debug and exclude_ids:
         print(f"[DEBUG] Applied {len(exclude_ids)} thread excludes")
@@ -322,6 +328,7 @@ def process_thread_overrides_json(
     cookies: Optional[dict] = None,
     session: Optional[Any] = None,
     debug: bool = False,
+    override_path: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     """Process include overrides from YAML using JSON API (no PRAW).
 
@@ -337,7 +344,7 @@ def process_thread_overrides_json(
     Returns:
         List of thread dictionaries
     """
-    data = load_thread_overrides_data(OVERRIDE_PATH)
+    data = load_thread_overrides_data(override_path or OVERRIDE_PATH)
     include = data.get("include")
     if not isinstance(include, dict):
         if debug:
