@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from sotd.utils.data_dir import get_default_catalog_path
+
 from .base_matcher import BaseMatcher
 from .loaders import CatalogLoader
 from .types import MatchResult, MatchType, create_match_result
@@ -10,10 +12,19 @@ from .utils.regex_error_utils import compile_regex_with_context, create_context_
 class RazorMatcher(BaseMatcher):
     def __init__(
         self,
-        catalog_path: Path = Path("data/razors.yaml"),
+        catalog_path: Optional[Path] = None,
         correct_matches_path: Optional[Path] = None,
         bypass_correct_matches: bool = False,
     ):
+        # The default catalog resolves from the run's data dir
+        # (get_data_dir: SOTD_DATA_DIR env var > "data", relative values
+        # anchored at the repo root), so a bare RazorMatcher() works from
+        # any working directory -- previously the bare CWD-relative
+        # Path("data/razors.yaml") default made construction raise
+        # FileNotFoundError from anywhere but the repo root, even with
+        # SOTD_DATA_DIR set.
+        if catalog_path is None:
+            catalog_path = get_default_catalog_path("razors.yaml")
         super().__init__(
             catalog_path=catalog_path,
             field_type="razor",

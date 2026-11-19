@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from sotd.utils.catalog_validator import validate_patterns_format
+from sotd.utils.data_dir import get_default_catalog_path
 from sotd.utils.extract_normalization import strip_trailing_periods
 from sotd.utils.yaml_loader import load_yaml_with_nfc
 
@@ -21,10 +22,19 @@ from .utils.regex_error_utils import compile_regex_with_context, create_context_
 class SoapMatcher(BaseMatcher):
     def __init__(
         self,
-        catalog_path: Path = Path("data/soaps.yaml"),
+        catalog_path: Optional[Path] = None,
         correct_matches_path: Optional[Path] = None,
         bypass_correct_matches: bool = False,
     ):
+        # The default catalog resolves from the run's data dir
+        # (get_data_dir: SOTD_DATA_DIR env var > "data", relative values
+        # anchored at the repo root), so a bare SoapMatcher() works from
+        # any working directory -- previously the bare CWD-relative
+        # Path("data/soaps.yaml") default made construction raise
+        # FileNotFoundError from anywhere but the repo root, even with
+        # SOTD_DATA_DIR set.
+        if catalog_path is None:
+            catalog_path = get_default_catalog_path("soaps.yaml")
         super().__init__(
             catalog_path=catalog_path,
             field_type="soap",

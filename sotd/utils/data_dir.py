@@ -119,3 +119,17 @@ def get_default_correct_matches_path() -> Path:
     matches and the matcher fell back to regex-only matching.
     """
     return get_data_dir() / "correct_matches"
+
+
+def get_default_catalog_path(filename: str) -> Path:
+    """Default catalog file: ``<data dir>/<filename>``.
+
+    The data dir is the run's data dir (``get_data_dir()``: ``--data-dir`` >
+    ``SOTD_DATA_DIR`` env var > ``"data"``), with relative values anchored
+    at the repo root inside ``get_data_dir()`` -- so this path never depends
+    on the process working directory. Previously the matchers defaulted to
+    bare CWD-relative ``Path("data/<filename>")`` values, so constructing a
+    matcher from any directory but the repo root raised ``FileNotFoundError``
+    naming the CWD-relative path, even with ``SOTD_DATA_DIR`` set.
+    """
+    return get_data_dir() / filename

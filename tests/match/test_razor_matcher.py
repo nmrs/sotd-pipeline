@@ -97,7 +97,8 @@ def test_enhanced_regex_error_reporting():
         error_message = str(exc_info.value)
         assert "Invalid regex pattern" in error_message
         assert "invalid[regex" in error_message
-        assert "File: data/razors.yaml" in error_message
+        assert "File: " in error_message
+        assert "razors.yaml" in error_message
         assert "Brand: Test Brand" in error_message
         assert "Model: Test Model" in error_message
         assert "unterminated character set" in error_message  # The actual regex error

@@ -429,7 +429,8 @@ def test_enhanced_regex_error_reporting():
         error_message = str(exc_info.value)
         assert "Invalid regex pattern" in error_message
         assert "invalid[regex" in error_message
-        assert "File: data/soaps.yaml" in error_message
+        assert "File: " in error_message
+        assert "soaps.yaml" in error_message
         assert "Brand: Test Brand" in error_message
         assert "unterminated character set" in error_message  # The actual regex error
 
@@ -446,7 +447,8 @@ def test_invalid_yaml_structure_validation():
 
         error_message = str(exc_info.value)
         assert "Invalid YAML structure" in error_message
-        assert "File: data/soaps.yaml" in error_message
+        assert "File: " in error_message
+        assert "soaps.yaml" in error_message
         assert "Brand: Test Brand" in error_message
         assert "Test Scent" in error_message
         assert "scents:" in error_message
