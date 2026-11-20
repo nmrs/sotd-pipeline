@@ -31,6 +31,7 @@ try:
     from sotd.match.razor_matcher import RazorMatcher
     from sotd.match.soap_matcher import SoapMatcher
     from sotd.match.types import MatchResult
+    from sotd.utils.data_dir import get_data_dir, get_default_correct_matches_path
 except ImportError as e:
     print(f"Error: Could not import required modules: {e}")
     print("Make sure you're running from the project root.")
@@ -40,19 +41,22 @@ except ImportError as e:
 class ProductAnalyzer:
     """Unified analyzer for all product types."""
 
-    # Product type configuration for non-brush products
+    # Product type configuration for non-brush products. The catalog
+    # entries are filenames, resolved against the run's data dir in
+    # _create_matcher -- never a bare CWD-relative "data/..." path, so the
+    # tool works from any working directory (see #23).
     PRODUCT_CONFIGS = {
         "razor": {
             "matcher_class": RazorMatcher,
-            "catalog_path": "data/razors.yaml",
+            "catalog_path": "razors.yaml",
         },
         "blade": {
             "matcher_class": BladeMatcher,
-            "catalog_path": "data/blades.yaml",
+            "catalog_path": "blades.yaml",
         },
         "soap": {
             "matcher_class": SoapMatcher,
-            "catalog_path": "data/soaps.yaml",
+            "catalog_path": "soaps.yaml",
         },
     }
 
@@ -74,10 +78,18 @@ class ProductAnalyzer:
     def _create_matcher(self):
         """Create the appropriate matcher instance."""
         matcher_class = self.config["matcher_class"]
-        catalog_path = Path(self.config["catalog_path"])
+        # Resolve both data files against the run's data dir
+        # (SOTD_DATA_DIR > repo-root-anchored "data"), so the tool works
+        # from any working directory. The correct-matches path is the
+        # directory, not a file: BaseMatcher appends "<field>.yaml" to it,
+        # so the old Path("data/correct_matches.yaml") pointed at
+        # "data/correct_matches.yaml/razor.yaml" -- which never exists --
+        # and the tool silently ran regex-only even from the repo root.
+        catalog_path = get_data_dir() / self.config["catalog_path"]
 
         return matcher_class(
-            catalog_path=catalog_path, correct_matches_path=Path("data/correct_matches.yaml")
+            catalog_path=catalog_path,
+            correct_matches_path=get_default_correct_matches_path(),
         )
 
     def analyze(self, product_string: str, bypass_correct_matches: bool = False) -> None:
