@@ -22,6 +22,7 @@ from sotd.cli_utils.base_parser import BaseCLIParser  # noqa: E402
 from sotd.match.tools.utils.analysis_base import AnalysisTool  # noqa: E402
 from sotd.utils.catalog_validator import validate_patterns_format  # noqa: E402
 from sotd.utils.competition_tags import load_competition_tags, strip_competition_tags  # noqa: E402
+from sotd.utils.data_dir import get_data_dir  # noqa: E402
 from sotd.utils.extract_normalization import normalize_for_matching  # noqa: E402
 from sotd.utils.yaml_loader import load_yaml_with_nfc  # noqa: E402
 
@@ -1148,7 +1149,12 @@ class MismatchAnalyzer(AnalysisTool):
             self._catalog_patterns[field] = []
             return []
 
-        catalog_path = Path("data") / catalog_file
+        # Resolve the catalog from the run's data dir (get_data_dir():
+        # --data-dir > SOTD_DATA_DIR > <repo root>/data), so the analyzer
+        # loads catalog patterns from any working directory. Previously a
+        # bare CWD-relative Path("data") silently loaded no patterns at all
+        # from anywhere but the repo root.
+        catalog_path = get_data_dir() / catalog_file
         if not catalog_path.exists():
             self._catalog_patterns[field] = []
             return []
