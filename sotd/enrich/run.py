@@ -85,6 +85,13 @@ def _process_month(
     # Enrich the comments
     enriched_comments = enrich_comments(comments, original_comments)
 
+    # Strip the _month stamp before saving. It is added above only so the
+    # brush/straight-razor enrichers can look up month-scoped overrides;
+    # it is internal bookkeeping, not record data, and must not leak into
+    # the saved enriched file (the enrichers have already read it by now).
+    for enriched_comment in enriched_comments:
+        enriched_comment.pop("_month", None)
+
     # Calculate enrichment statistics
     enrichment_stats = calculate_enrichment_stats(enriched_comments)
 
