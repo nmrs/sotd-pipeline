@@ -61,6 +61,13 @@ class SoapSampleEnricher(BaseEnricher):
                 if brand == "unknown" and scent == "smush":
                     sample_type = "sample"
 
+        # A soap with no sample marker is not enrichment: return {} so the
+        # registry writes no `enriched` key and the record is not counted
+        # as soap-enriched in the run stats. Previously this returned an
+        # all-None dict, which counted nearly every soap record as enriched.
+        if sample_type is None:
+            return {}
+
         # Create enriched data
         enriched_data = {
             "sample_type": sample_type,

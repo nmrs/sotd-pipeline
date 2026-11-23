@@ -100,7 +100,17 @@ class SoapMashupEnricher(BaseEnricher):
             if detect_soap_mashup(original) or detect_soap_mashup(normalized):
                 is_mashup = True
 
-        return {"is_mashup": is_mashup}
+        # A soap that is not a mashup is not enrichment: return {} so the
+        # registry writes no `enriched` key and the record is not counted
+        # as soap-enriched in the run stats. Previously this returned
+        # {"is_mashup": False}, which counted every soap record as
+        # enriched. All downstream readers use
+        # enriched.get("is_mashup") is True, so an absent key behaves
+        # exactly like False.
+        if not is_mashup:
+            return {}
+
+        return {"is_mashup": True}
 
     def set_data_path(self, data_path: Path) -> None:
         """Point the mashup catalog at a different data directory.

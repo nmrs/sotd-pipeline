@@ -1,8 +1,12 @@
 import pytest
+from pathlib import Path
 
 from sotd.enrich.blade_enricher import BladeCountEnricher
 from sotd.enrich.enricher import BaseEnricher
 from sotd.enrich.registry import EnricherRegistry
+from sotd.enrich.save import calculate_enrichment_stats
+from sotd.enrich.soap_mashup_enricher import SoapMashupEnricher
+from sotd.enrich.soap_sample_enricher import SoapSampleEnricher
 from sotd.enrich.straight_razor_enricher import StraightRazorEnricher
 
 
@@ -248,3 +252,77 @@ class TestEnricherRegistry:
         # Should not raise exception, should return original record
         result = registry.enrich_record(record, original_comment)
         assert result == record
+
+    def test_no_finding_record_writes_no_enriched_key(self, tmp_path):
+        """A record with no use count, no sample and no mashup gets no
+        `enriched` key on blade/soap and counts as enriched in no stat.
+
+        Regression test for the #25(b) stats inflation: the three
+        enrichers used to return non-empty dicts for a negative finding
+        ({"use_count": None, ...}, all-None sample dict,
+        {"is_mashup": False}), so nearly every blade/soap record counted
+        as enriched.
+        """
+        registry = EnricherRegistry()
+        registry.register(BladeCountEnricher())
+        registry.register(SoapSampleEnricher())
+        registry.register(SoapMashupEnricher(soaps_path=tmp_path / "no-such-soaps.yaml"))
+
+        record = {
+            "id": "x1",
+            "author": "u1",
+            "blade": {
+                "original": "Astra SP",
+                "normalized": "Astra SP",
+                "matched": {"brand": "Astra", "model": "SP"},
+            },
+            "blade_extracted": "Astra SP",
+            "soap": {
+                "original": "summer break soaps - steady",
+                "normalized": "summer break soaps - steady",
+                "matched": {"brand": "Summer Break Soaps", "scent": "Steady"},
+            },
+            "soap_extracted": "summer break soaps - steady",
+        }
+        result = registry.enrich_record(record, "")
+
+        assert "enriched" not in result["blade"]
+        assert "enriched" not in result["soap"]
+        stats = calculate_enrichment_stats([result])
+        assert stats["blade_enriched"] == 0
+        assert stats["soap_enriched"] == 0
+        assert stats["total_enriched"] == 0
+
+    def test_finding_record_still_enriches_and_counts(self, tmp_path):
+        """Positive control: a use count, a sample and a mashup still
+        write `enriched` keys and count in the stats."""
+        registry = EnricherRegistry()
+        registry.register(BladeCountEnricher())
+        registry.register(SoapSampleEnricher())
+        registry.register(SoapMashupEnricher(soaps_path=tmp_path / "no-such-soaps.yaml"))
+
+        record = {
+            "id": "x2",
+            "author": "u1",
+            "blade": {
+                "original": "Astra SP (3)",
+                "normalized": "Astra SP",
+                "matched": {"brand": "Astra", "model": "SP"},
+            },
+            "blade_extracted": "Astra SP (3)",
+            "soap": {
+                "original": "summer break soaps - steady (sample) mashup",
+                "normalized": "summer break soaps - steady",
+                "matched": {"brand": "Summer Break Soaps", "scent": "Steady"},
+            },
+            "soap_extracted": "summer break soaps - steady (sample) mashup",
+        }
+        result = registry.enrich_record(record, "")
+
+        assert result["blade"]["enriched"]["use_count"] == 3
+        assert result["soap"]["enriched"]["sample_type"] == "sample"
+        assert result["soap"]["enriched"]["is_mashup"] is True
+        stats = calculate_enrichment_stats([result])
+        assert stats["blade_enriched"] == 1
+        assert stats["soap_enriched"] == 1
+        assert stats["total_enriched"] == 1

@@ -63,6 +63,16 @@ class BladeCountEnricher(BaseEnricher):
             use_count = None
             extraction_remainder = f"Exceeded max use count limit ({self.MAX_USE_COUNT})"
 
+        # A blade with no use count is not enrichment: return {} so the
+        # registry writes no `enriched` key and the record is not counted
+        # as blade-enriched in the run stats. Previously this returned
+        # {"use_count": None, "extraction_remainder": ...}, a non-empty
+        # dict that counted nearly every blade record as enriched. (A
+        # candidate rejected by the max-count cap is likewise not a
+        # finding; nothing downstream reads extraction_remainder.)
+        if use_count is None:
+            return {}
+
         # Create enriched data
         enriched_data = {
             "use_count": use_count,

@@ -121,7 +121,7 @@ class TestBladeCountEnricher:
         assert result["extraction_remainder"] == "(x2)"
 
     def test_enrich_with_no_count(self, enricher):
-        """Test enrichment when no use count is found."""
+        """Test enrichment when no use count is found: no finding, no dict."""
         field_data = {
             "original": "Astra SP",
             "normalized": "Astra SP",
@@ -131,9 +131,7 @@ class TestBladeCountEnricher:
 
         result = enricher.enrich(field_data, original_comment)
 
-        assert result is not None
-        assert result["use_count"] is None
-        assert result["extraction_remainder"] == ""
+        assert result == {}
 
     def test_enrich_with_multiple_numbers(self, enricher):
         """Test extraction when multiple numbers are present (should get first match)."""

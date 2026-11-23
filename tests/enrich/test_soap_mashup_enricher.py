@@ -154,24 +154,24 @@ class TestSoapMashupEnricher:
         assert result == {"is_mashup": True}
 
     def test_enrich_no_mashup(self):
-        """Test is_mashup False when no catalog or text mashup."""
+        """Test no dict returned when no catalog or text mashup."""
         field_data = {
             "original": "Barrister and Mann - Seville",
             "normalized": "barrister and mann - seville",
             "matched": {"brand": "Barrister and Mann", "scent": "Seville", "countable": True},
         }
         result = self.enricher.enrich(field_data, "")
-        assert result == {"is_mashup": False}
+        assert result == {}
 
     def test_enrich_matched_null_no_mashup_text(self):
-        """Test is_mashup False when matched is null and no mashup in text."""
+        """Test no dict returned when matched is null and no mashup in text."""
         field_data = {
             "original": "Unknown soap",
             "normalized": "unknown soap",
             "matched": None,
         }
         result = self.enricher.enrich(field_data, "")
-        assert result == {"is_mashup": False}
+        assert result == {}
 
     def test_enrich_from_catalog_lookup_when_countable_absent(self, tmp_path: Path):
         """Test is_mashup True when matched has brand+scent but no countable (e.g. correct_matches)."""
@@ -193,7 +193,7 @@ Mama Bear's Soaps:
         assert result == {"is_mashup": True}
 
     def test_enrich_from_catalog_lookup_countable_true_not_mashup(self, tmp_path: Path):
-        """Test is_mashup False when catalog lookup returns countable true."""
+        """Test no dict returned when catalog lookup returns countable true."""
         soaps_yaml = tmp_path / "soaps.yaml"
         soaps_yaml.write_text("""
 Some Brand:
@@ -209,4 +209,4 @@ Some Brand:
             "matched": {"brand": "Some Brand", "scent": "Normal Scent"},
         }
         result = enricher.enrich(field_data, "")
-        assert result == {"is_mashup": False}
+        assert result == {}

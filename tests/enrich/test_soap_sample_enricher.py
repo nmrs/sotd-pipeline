@@ -49,18 +49,13 @@ class TestSoapSampleEnricher:
         assert result == {}
 
     def test_enrich_no_sample_indicators(self):
-        """Test enrich with no sample indicators."""
+        """Test enrich with no sample indicators: no finding, no dict."""
         field_data = {
             "original": "summer break soaps - steady",
             "normalized": "summer break soaps - steady",
         }
         result = self.enricher.enrich(field_data, "")
-        assert result == {
-            "sample_type": None,
-            "sample_number": None,
-            "total_samples": None,
-            "extraction_remainder": "",
-        }
+        assert result == {}
 
     def test_enrich_basic_sample(self):
         """Test enrich with basic sample indicator."""
@@ -284,4 +279,4 @@ class TestSoapSampleEnricher:
             "matched": {"brand": "Unknown", "scent": "Something Else"},
         }
         result = self.enricher.enrich(field_data, "")
-        assert result["sample_type"] is None
+        assert result == {}
