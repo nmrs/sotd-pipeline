@@ -76,19 +76,51 @@ class EnricherRegistry:
                 extracted_value = field_data.get("original", "")
 
             field_enriched_data = {}
+            # Provenance must not be overwritten by the last writer: collect
+            # every contributing enricher (and each one's extraction source)
+            # instead of letting .update() keep only the final stamp.
+            # (GameChanger + RazorFormat both fire on a Game Changer record,
+            # yet the saved record named only RazorFormatEnricher; the soap
+            # enrichers stamp no provenance at all.)
+            enriched_by: List[str] = []
+            extraction_sources: List[str] = []
 
             for enricher in enrichers:
                 try:
                     if enricher.applies_to(record):
                         enrichment_result = enricher.enrich(field_data, extracted_value, record)
                         if enrichment_result:
-                            field_enriched_data.update(enrichment_result)
+                            by = enrichment_result.get("_enriched_by")
+                            if not by:
+                                # Some enrichers stamp no provenance; the
+                                # registry knows the contributor.
+                                by = enricher.get_enricher_name()
+                            if by not in enriched_by:
+                                enriched_by.append(by)
+                            source = enrichment_result.get("_extraction_source")
+                            if source and source not in extraction_sources:
+                                extraction_sources.append(source)
+                            for key, value in enrichment_result.items():
+                                if key not in ("_enriched_by", "_extraction_source"):
+                                    field_enriched_data[key] = value
                             logger.debug(f"Applied {enricher.get_enricher_name()} to {field}")
                 except Exception as e:
                     logger.error(
                         f"Error applying enricher {enricher.get_enricher_name()} to {field}: {e}"
                     )
                     # Continue with other enrichers even if one fails
+
+            if enriched_by:
+                # One contributor keeps the historical plain-string shape;
+                # several contributors are recorded as a list, so no
+                # provenance is silently dropped.
+                field_enriched_data["_enriched_by"] = (
+                    enriched_by[0] if len(enriched_by) == 1 else enriched_by
+                )
+            if extraction_sources:
+                field_enriched_data["_extraction_source"] = (
+                    extraction_sources[0] if len(extraction_sources) == 1 else extraction_sources
+                )
 
             # Write enriched data directly to product field
             if field_enriched_data:
