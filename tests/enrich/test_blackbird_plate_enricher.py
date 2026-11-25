@@ -107,22 +107,20 @@ class TestBlackbirdPlateEnricher:
             assert result["plate"] == expected, f"Failed for comment: {comment}"
 
     def test_no_plate_found(self, enricher):
-        """Test that Standard plate is returned as default when no specific plate is found."""
+        """Test that None is returned when no specific plate is mentioned.
+
+        No plate is invented: a bare Blackbird carries no plate
+        information, so the enricher reports nothing.
+        """
         comment = "Blackland Blackbird"
         result = enricher.enrich({}, comment)
-        assert result is not None
-        assert result["plate"] == "Standard"
-        assert result["_enriched_by"] == "BlackbirdPlateEnricher"
-        assert result["_extraction_source"] == "user_comment"
+        assert result is None
 
     def test_empty_comment(self, enricher):
-        """Test that Standard plate is returned as default for empty comment."""
+        """Test that None is returned for an empty comment."""
         comment = ""
         result = enricher.enrich({}, comment)
-        assert result is not None
-        assert result["plate"] == "Standard"
-        assert result["_enriched_by"] == "BlackbirdPlateEnricher"
-        assert result["_extraction_source"] == "user_comment"
+        assert result is None
 
     def test_priority_order(self, enricher):
         """Test that OC takes priority over other matches when both are present."""

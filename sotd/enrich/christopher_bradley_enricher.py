@@ -60,11 +60,14 @@ class ChristopherBradleyEnricher(BaseEnricher):
             return None
         plate_type = self._extract_plate_type(razor_string)
 
-        # Prepare extracted data
+        # Prepare extracted data. plate_type is only recorded when the
+        # string names it: a level on its own (e.g. "C plate") does not
+        # imply SB, so no type is invented for it.
         extracted_data = {
             "plate_level": plate_level,
-            "plate_type": plate_type,
         }
+        if plate_type:
+            extracted_data["plate_type"] = plate_type
 
         # Use BaseEnricher's single source method for consistency
         return self._create_single_source_enriched_data(extracted_data, "user_comment")
@@ -87,19 +90,23 @@ class ChristopherBradleyEnricher(BaseEnricher):
                 return level
         return None
 
-    def _extract_plate_type(self, text: str) -> str:
+    def _extract_plate_type(self, text: str) -> Optional[str]:
         """Extract plate type from text using regex patterns.
 
         Args:
             text: The text to search for plate type patterns
 
         Returns:
-            The extracted plate type as a string ("OC" for open comb, "SB" for solid bar)
+            The extracted plate type as a string ("OC" for open comb, "SB"
+            for solid bar), or None if the text names no plate type. SB is
+            not assumed: a bare plate level carries no type information.
         """
-        # Match OC (open comb) or SB (solid bar), default to SB
+        # Match OC (open comb) or SB (solid bar); no default
         if re.search(r"\bOC\b|open comb", text, re.IGNORECASE):
             return "OC"
-        return "SB"
+        if re.search(r"\bSB\b|solid bar", text, re.IGNORECASE):
+            return "SB"
+        return None
 
     def _extract_material(self, text: str) -> Optional[str]:
         """Extract material specification from text using regex patterns.

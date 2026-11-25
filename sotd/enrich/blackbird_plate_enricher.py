@@ -51,5 +51,7 @@ class BlackbirdPlateEnricher(BaseEnricher):
             return "Lite"
         if re.search(r"\bstandard\b", text, re.IGNORECASE):
             return "Standard"
-        # Default to Standard if no specific plate type mentioned
-        return "Standard"
+        # No plate mentioned: return None rather than inventing the
+        # Standard default. An unobserved plate is not an enrichment;
+        # downstream counts must only see plates the poster named.
+        return None

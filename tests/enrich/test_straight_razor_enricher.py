@@ -326,12 +326,14 @@ class TestStraightRazorEnricher:
         assert "point" not in result
 
     def test_no_specifications_found(self, enricher):
-        """Test that steel defaults to Carbon even when no specifications are found."""
+        """Test that None is returned when no specifications are found.
+
+        No steel is invented: a straight razor with nothing named
+        carries no enrichment at all.
+        """
         comment = "Generic straight razor"
         result = enricher.enrich({}, comment)
-        assert result is not None
-        assert result["steel"] == "Carbon"
-        assert result["_extraction_source"] == "none"
+        assert result is None
 
     def test_case_insensitive_extraction(self, enricher):
         """Test that extraction works regardless of case for all specification types."""
@@ -468,18 +470,13 @@ class TestStraightRazorEnricher:
         assert enricher._parse_catalog_width("3/4") == 6  # 3/4 = 6/8
 
     def test_enrich_no_specifications_anywhere(self, enricher):
-        """Test that steel defaults to Carbon even when no other specifications are found."""
+        """Test that None is returned when no specifications exist anywhere."""
         field_data = {"brand": "Generic", "model": "Straight Razor", "format": "Straight"}
         razor_extracted = field_data["model"]
 
         result = enricher.enrich(field_data, razor_extracted)
 
-        assert result is not None
-        assert result["steel"] == "Carbon"
-        assert result["_extraction_source"] == "none"
-        assert "grind" not in result
-        assert "width" not in result
-        assert "point" not in result
+        assert result is None
 
     def test_enrich_catalog_data_only(self, enricher):
         """Test enrichment with only catalog data (no user specifications)."""
@@ -599,18 +596,18 @@ class TestStraightRazorEnricher:
             assert result is not None, f"Failed for comment: {comment}"
             assert result["steel"] == expected, f"Failed for comment: {comment}"
 
-    def test_steel_defaults_to_carbon(self, enricher):
-        """Test that steel defaults to Carbon when not specified."""
+    def test_steel_absent_when_not_specified(self, enricher):
+        """Test that no steel is recorded when the steel is not specified."""
         comment = "Full hollow 6/8 round point"
         result = enricher.enrich({}, comment)
         assert result is not None
-        assert result["steel"] == "Carbon"
+        assert "steel" not in result
         assert result["grind"] == "Full Hollow"
         assert result["width"] == "6/8"
         assert result["point"] == "Round"
 
-    def test_user_steel_overrides_default(self, enricher):
-        """Test that user-specified steel overrides the Carbon default."""
+    def test_user_steel_overrides_catalog_steel_value(self, enricher):
+        """Test that user-specified steel overrides the catalog steel."""
         comment = "Full hollow 6/8 stainless steel round point"
         result = enricher.enrich({}, comment)
         assert result is not None
@@ -619,8 +616,8 @@ class TestStraightRazorEnricher:
         assert result["width"] == "6/8"
         assert result["point"] == "Round"
 
-    def test_catalog_steel_overrides_default(self, enricher):
-        """Test that catalog steel overrides the Carbon default."""
+    def test_catalog_steel_recorded(self, enricher):
+        """Test that catalog steel is recorded when the user says nothing."""
         field_data = {
             "brand": "Dovo",
             "model": "Straight",

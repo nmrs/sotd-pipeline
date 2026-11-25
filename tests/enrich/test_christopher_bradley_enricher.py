@@ -28,12 +28,20 @@ class TestChristopherBradleyEnricher:
         assert not self.enricher.applies_to(record)
 
     def test_extract_plate_level_and_type_sb(self):
-        """Test plate extraction for SB series."""
-        field_data = {"model": "Karve Christopher Bradley B"}
+        """Test plate extraction for SB series with explicit designation."""
+        field_data = {"model": "Karve CB B SB"}
         result = self.enricher.enrich(field_data, field_data["model"])
         assert result is not None
         assert result["plate_level"] == "B"
         assert result["plate_type"] == "SB"
+
+    def test_extract_plate_level_without_type(self):
+        """Test that no plate type is invented when only a level is named."""
+        field_data = {"model": "Karve Christopher Bradley B"}
+        result = self.enricher.enrich(field_data, field_data["model"])
+        assert result is not None
+        assert result["plate_level"] == "B"
+        assert "plate_type" not in result
 
     def test_extract_plate_level_and_type_oc(self):
         """Test plate extraction for OC series."""
@@ -67,13 +75,13 @@ class TestChristopherBradleyEnricher:
         assert result["plate_level"] == "G"
         assert result["plate_type"] == "OC"
 
-    def test_extract_plate_level_and_type_default_sb(self):
-        """Test plate extraction for default SB series."""
+    def test_extract_plate_level_and_type_level_only(self):
+        """Test that a level on its own records no plate type."""
         field_data = {"model": "Karve CB E"}
         result = self.enricher.enrich(field_data, field_data["model"])
         assert result is not None
         assert result["plate_level"] == "E"
-        assert result["plate_type"] == "SB"
+        assert "plate_type" not in result
 
     def test_invalid_plate_level(self):
         """Test that invalid plate level is rejected."""

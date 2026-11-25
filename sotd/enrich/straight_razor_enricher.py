@@ -128,9 +128,12 @@ class StraightRazorEnricher(BaseEnricher):
         final_width = user_width or catalog_width
         final_point = user_point or catalog_point
 
-        # For steel, apply Carbon default for all straight razors
-        # (this enricher only runs for straight razors)
-        final_steel = user_steel or catalog_steel or "Carbon"
+        # For steel, only record what the user comment, the catalog, or an
+        # override actually says. There is no Carbon default: an unobserved
+        # steel is not an enrichment, and a default here also forced this
+        # enricher to return a dict (and count as enriched) for every
+        # straight razor even when nothing was found.
+        final_steel = user_steel or catalog_steel
 
         # Determine extraction source for metadata
         extraction_sources = []
