@@ -23,9 +23,12 @@
 #
 # Valid enrichment keys by field:
 # - brush: fiber (string), knot_size_mm (float)
-# - razor: grind, width, point, steel, gap, plate, plate_type, plate_level, super_speed_variant, format (all strings)
-# - blade: use_count (integer)
-# - soap: sample_brand, sample_scent (both strings)
+# - razor: grind, width, point, steel (all strings)
+# Blade and soap have no supported override keys: no enricher reads an
+# override for them, so keys for those fields fail validation. (gap, plate,
+# plate_type, plate_level, super_speed_variant, format, use_count,
+# sample_brand and sample_scent used to be listed here but no enricher ever
+# read them, so an override using one loaded fine and silently did nothing.)
 #
 # Example:
 # 2026-01:
@@ -36,5 +39,4 @@
 #       knot_size_mm: 21.0
 #     razor:
 #       grind: "full_hollow"
-#     blade:
-#       use_count: 3
+#       steel: "Carbon"

@@ -19,6 +19,15 @@ class EnrichmentOverrideManager:
 
     # Enrichment keys by field type and their expected types
     # Format: {field: {enrichment_key: type}}
+    # Only keys an enricher actually reads belong here. BrushEnricher reads
+    # fiber/knot_size_mm and StraightRazorEnricher reads grind/width/point/
+    # steel; the other enrichers (GameChanger, Blackbird, Christopher
+    # Bradley, SuperSpeed, RazorFormat, BladeCount, SoapSample) take no
+    # override manager, so gap/plate/plate_type/plate_level/
+    # super_speed_variant/format/use_count/sample_brand/sample_scent were
+    # validated but silently never applied. Blade and soap keep empty
+    # mappings until an enricher is wired to read an override for them;
+    # adding a key here without that wiring reintroduces the same trap.
     ENRICHMENT_KEYS = {
         "brush": {
             "fiber": str,
@@ -29,20 +38,9 @@ class EnrichmentOverrideManager:
             "width": str,
             "point": str,
             "steel": str,
-            "gap": str,
-            "plate": str,
-            "plate_type": str,
-            "plate_level": str,
-            "super_speed_variant": str,
-            "format": str,
         },
-        "blade": {
-            "use_count": int,
-        },
-        "soap": {
-            "sample_brand": str,
-            "sample_scent": str,
-        },
+        "blade": {},
+        "soap": {},
     }
 
     def __init__(self, override_file_path: Path):

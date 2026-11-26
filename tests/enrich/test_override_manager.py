@@ -88,36 +88,33 @@ class TestEnrichmentOverrideManager:
         assert manager.has_overrides()
         assert manager.get_override("2026-01", "m99b8f9", "razor", "grind") == "full_hollow"
 
-    def test_load_overrides_valid_blade_use_count(self, tmp_path):
-        """Test loading valid override for blade use_count."""
+    @pytest.mark.parametrize(
+        "field,key,value",
+        [
+            ("razor", "gap", '"0.68"'),
+            ("razor", "plate", '"OC"'),
+            ("razor", "plate_type", '"B"'),
+            ("razor", "plate_level", '"1"'),
+            ("razor", "super_speed_variant", '"Red Tip"'),
+            ("razor", "format", '"DE"'),
+            ("blade", "use_count", "3"),
+            ("soap", "sample_brand", '"Declaration Grooming"'),
+            ("soap", "sample_scent", '"Yuzu"'),
+        ],
+    )
+    def test_load_overrides_removed_keys_rejected(self, tmp_path, field, key, value):
+        """Removed keys fail validation: no enricher ever read them, so an
+        override using one loaded fine and silently did nothing."""
         override_file = tmp_path / "enrichment_overrides.yaml"
-        override_file.write_text("""
+        override_file.write_text(f"""
 2026-01:
   m99b8f9:
-    blade:
-      use_count: 3
+    {field}:
+      {key}: {value}
 """)
         manager = EnrichmentOverrideManager(override_file)
-        manager.load_overrides()
-        assert manager.has_overrides()
-        assert manager.get_override("2026-01", "m99b8f9", "blade", "use_count") == 3
-
-    def test_load_overrides_valid_soap_sample_brand(self, tmp_path):
-        """Test loading valid override for soap sample_brand."""
-        override_file = tmp_path / "enrichment_overrides.yaml"
-        override_file.write_text("""
-2026-01:
-  m99b8f9:
-    soap:
-      sample_brand: "Declaration Grooming"
-""")
-        manager = EnrichmentOverrideManager(override_file)
-        manager.load_overrides()
-        assert manager.has_overrides()
-        assert (
-            manager.get_override("2026-01", "m99b8f9", "soap", "sample_brand")
-            == "Declaration Grooming"
-        )
+        with pytest.raises(ValueError, match=f"Invalid enrichment key '{key}'"):
+            manager.load_overrides()
 
     def test_load_overrides_multiple_fields(self, tmp_path):
         """Test loading overrides for multiple fields."""
@@ -261,22 +258,6 @@ class TestEnrichmentOverrideManager:
         assert result == 28.0
         assert isinstance(result, float)
 
-    def test_load_overrides_invalid_use_count_type(self, tmp_path):
-        """Test loading override file with invalid use_count type."""
-        override_file = tmp_path / "enrichment_overrides.yaml"
-        override_file.write_text("""
-2026-01:
-  m99b8f9:
-    blade:
-      use_count: "3"
-""")
-        # String "3" should be converted to int
-        manager = EnrichmentOverrideManager(override_file)
-        manager.load_overrides()
-        result = manager.get_override("2026-01", "m99b8f9", "blade", "use_count")
-        assert result == 3
-        assert isinstance(result, int)
-
     def test_load_overrides_empty_string_value(self, tmp_path):
         """Test loading override file with empty string value."""
         override_file = tmp_path / "enrichment_overrides.yaml"
@@ -352,8 +333,8 @@ class TestEnrichmentOverrideManager:
       grind: "full_hollow"
 2026-02:
   m99b8f1:
-    blade:
-      use_count: 3
+    razor:
+      steel: "Carbon"
 """)
         manager = EnrichmentOverrideManager(override_file)
         manager.load_overrides()
@@ -363,15 +344,14 @@ class TestEnrichmentOverrideManager:
         assert summary["month_counts"]["2026-01"] == 3
         assert summary["month_counts"]["2026-02"] == 1
         assert summary["field_counts"]["brush"] == 2
-        assert summary["field_counts"]["razor"] == 1
-        assert summary["field_counts"]["blade"] == 1
+        assert summary["field_counts"]["razor"] == 2
         assert summary["key_counts"]["brush.fiber"] == 1
         assert summary["key_counts"]["brush.knot_size_mm"] == 1
         assert summary["key_counts"]["razor.grind"] == 1
-        assert summary["key_counts"]["blade.use_count"] == 1
+        assert summary["key_counts"]["razor.steel"] == 1
 
-    def test_all_razor_enrichment_keys(self, tmp_path):
-        """Test all razor enrichment keys are supported."""
+    def test_all_supported_razor_enrichment_keys(self, tmp_path):
+        """Test all supported razor enrichment keys load."""
         override_file = tmp_path / "enrichment_overrides.yaml"
         override_file.write_text("""
 2026-01:
@@ -381,12 +361,6 @@ class TestEnrichmentOverrideManager:
       width: "15/16"
       point: "round"
       steel: "Carbon"
-      gap: "0.68"
-      plate: "A"
-      plate_type: "B"
-      plate_level: "1"
-      super_speed_variant: "Red Tip"
-      format: "DE"
 """)
         manager = EnrichmentOverrideManager(override_file)
         manager.load_overrides()
@@ -394,11 +368,3 @@ class TestEnrichmentOverrideManager:
         assert manager.get_override("2026-01", "m99b8f9", "razor", "width") == "15/16"
         assert manager.get_override("2026-01", "m99b8f9", "razor", "point") == "round"
         assert manager.get_override("2026-01", "m99b8f9", "razor", "steel") == "Carbon"
-        assert manager.get_override("2026-01", "m99b8f9", "razor", "gap") == "0.68"
-        assert manager.get_override("2026-01", "m99b8f9", "razor", "plate") == "A"
-        assert manager.get_override("2026-01", "m99b8f9", "razor", "plate_type") == "B"
-        assert manager.get_override("2026-01", "m99b8f9", "razor", "plate_level") == "1"
-        assert (
-            manager.get_override("2026-01", "m99b8f9", "razor", "super_speed_variant") == "Red Tip"
-        )
-        assert manager.get_override("2026-01", "m99b8f9", "razor", "format") == "DE"

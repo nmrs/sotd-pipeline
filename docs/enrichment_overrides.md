@@ -45,7 +45,12 @@ The override file uses YAML format with the following structure:
 
 ### Valid Fields
 
-The override system supports all four product field types (matching `extract_overrides.yaml`):
+The override system supports the brush and razor field types. Blade and
+soap have no supported override keys: no enricher reads an override for
+them, so any key under `blade` or `soap` fails validation. Adding a key
+for those fields means wiring an enricher to read it, not just listing
+it as valid — a listed-but-unread key loads fine and silently does
+nothing.
 
 #### Brush Enrichment (`brush`)
 - `fiber` - Fiber type (string, e.g., "Mixed Badger/Horse", "Badger", "Synthetic")
@@ -56,19 +61,6 @@ The override system supports all four product field types (matching `extract_ove
 - `width` - Straight razor width (string fraction, e.g., "6/8", "15/16")
 - `point` - Straight razor point type (string, e.g., "round", "square", "french")
 - `steel` - Straight razor steel type (string, e.g., "Carbon", "Stainless")
-- `gap` - Game Changer razor gap (string, e.g., "0.68", "0.84")
-- `plate` - Blackbird razor plate (string, e.g., "A", "B", "C")
-- `plate_type` - Christopher Bradley plate type (string, e.g., "A", "B", "C")
-- `plate_level` - Christopher Bradley plate level (string, e.g., "1", "2", "3")
-- `super_speed_variant` - Super Speed variant (string, e.g., "Red Tip", "Flare Tip", "Unknown")
-- `format` - Razor format (string, e.g., "DE", "Straight", "SE")
-
-#### Blade Enrichment (`blade`)
-- `use_count` - Number of times blade has been used (integer, e.g., 1, 2, 3)
-
-#### Soap Enrichment (`soap`)
-- `sample_brand` - Sample soap brand (string)
-- `sample_scent` - Sample soap scent (string)
 
 ## Usage Examples
 
@@ -124,18 +116,7 @@ Override straight razor specifications:
       point: "round"
 ```
 
-### Example 5: Blade Enrichment Override
-
-Override blade use count:
-
-```yaml
-2026-01:
-  m99b8f9:
-    blade:
-      use_count: 3
-```
-
-### Example 6: Multiple Field Types
+### Example 5: Multiple Field Types
 
 Override enrichment fields across multiple product types:
 
@@ -147,8 +128,7 @@ Override enrichment fields across multiple product types:
         use_catalog: true
     razor:
       grind: "full_hollow"
-    blade:
-      use_count: 2
+      steel: "Carbon"
 ```
 
 ## Validation and Error Handling
@@ -161,7 +141,7 @@ The system automatically validates:
 - Comment ID format
 - Field name validity (razor, blade, brush, soap)
 - Enrichment key validity (field-specific keys)
-- Value type validation (strings, floats, integers based on enrichment key)
+- Value type validation (strings and floats based on enrichment key)
 - `use_catalog` flag validation (boolean)
 
 ### Error Handling
@@ -230,7 +210,7 @@ Enrichment overrides differ from extract overrides in several ways:
 - **Scope**: Enrichment overrides affect enrichment fields (fiber, knot_size_mm, grind, etc.), not extracted product names
 - **Structure**: Enrichment overrides use nested structure (field → enrichment_key → override_spec)
 - **Options**: Enrichment overrides support both explicit values and `use_catalog` flags
-- **Types**: Enrichment overrides support multiple value types (strings, floats, integers)
+- **Types**: Enrichment overrides support strings and floats
 
 ## Troubleshooting
 
